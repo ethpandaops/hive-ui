@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createHashRouter, RouterProvider } from 'react-router-dom';
 import TestResults from './components/TestResults';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -27,11 +28,41 @@ function MainApp() {
   );
 }
 
+// Create router with routes
+const router = createHashRouter([
+  {
+    path: '/',
+    element: <MainApp />
+  },
+  {
+    path: '/test/:discoveryName/:suiteid',
+    lazy: async () => {
+      try {
+        const { default: TestDetail } = await import('./components/TestDetail');
+        return { Component: TestDetail };
+      } catch (error) {
+        console.error('Failed to load TestDetail component:', error);
+        // Return a placeholder component if the import fails
+        return {
+          Component: () => <div>Test Details Loading Error</div>
+        };
+      }
+    }
+  },
+  {
+    path: '/logs/:group/:suiteId/:logFile',
+    lazy: async () => {
+      const { default: LogViewer } = await import('./components/LogViewer');
+      return { Component: LogViewer };
+    }
+  }
+]);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <MainApp />
+        <RouterProvider router={router} />
       </ThemeProvider>
     </QueryClientProvider>
   );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../contexts/useTheme';
 import { ThemeMode } from '../contexts/themeContext';
+import { Link } from 'react-router-dom';
 
 interface HeaderProps {
   showTables: boolean;
@@ -37,15 +38,19 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '1rem 1.5rem'
+        padding: '1rem 1.5rem',
+        maxWidth: '1400px',
+        margin: '0 auto',
       }}>
         {/* Logo and Navigation */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{
+          <Link to="/" style={{
+            textDecoration: 'none',
             marginRight: '1.5rem',
             display: 'flex',
             alignItems: 'center',
-            color: '#3b82f6'
+            color: '#3b82f6',
+
           }}>
             <div
               style={{
@@ -113,19 +118,20 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
                 fontWeight: 700,
                 fontSize: '1.25rem',
                 color: isDarkMode ? '#f8fafc' : '#0f172a',
-                letterSpacing: '-0.025em'
+                letterSpacing: '0.018em'
               }}>
-                Hive Results
+                Ethereum Hive
               </span>
               <span style={{
                 fontSize: '0.75rem',
                 color: isDarkMode ? '#94a3b8' : '#64748b',
-                fontWeight: 500
+                fontWeight: 500,
+                letterSpacing: '0.15em'
               }}>
-                Ethereum Testing Framework
+                Integration Testing
               </span>
             </div>
-          </div>
+          </Link>
 
           <nav>
             <ul style={{ display: 'flex', gap: '1.5rem', padding: 0, margin: 0, listStyle: 'none' }}>
