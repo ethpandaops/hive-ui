@@ -115,16 +115,17 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
                 fontWeight: 700,
                 fontSize: '1.25rem',
                 color: isDarkMode ? '#f8fafc' : '#0f172a',
-                letterSpacing: '-0.025em'
+                letterSpacing: '0.018em'
               }}>
-                Hive Results
+                Ethereum Hive
               </span>
               <span style={{
                 fontSize: '0.75rem',
                 color: isDarkMode ? '#94a3b8' : '#64748b',
-                fontWeight: 500
+                fontWeight: 500,
+                letterSpacing: '0.15em'
               }}>
-                Ethereum Testing Framework
+                Integration Testing
               </span>
             </div>
           </Link>
