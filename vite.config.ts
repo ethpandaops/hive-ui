@@ -9,6 +9,7 @@ const getGitVersion = () => {
   try {
     return execSync('git rev-parse --short HEAD').toString().trim()
   } catch (e) {
+    console.log(e)
     return 'development'
   }
 }

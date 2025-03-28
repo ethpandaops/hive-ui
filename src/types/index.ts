@@ -1,4 +1,7 @@
-export type Directory = string;
+export interface Directory {
+  name: string;
+  address: string;
+}
 
 export interface TestRun {
   name: string;

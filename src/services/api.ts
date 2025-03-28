@@ -1,19 +1,23 @@
 import { Directory, TestRun } from '../types';
 
-const BASE_URL = 'https://hive.ethpandaops.io';
-
 const getTimestamp = () => new Date().getTime();
 
 export const fetchDirectories = async (): Promise<Directory[]> => {
-  const response = await fetch(`${BASE_URL}/directories.json?ts=${getTimestamp()}`);
+  const response = await fetch(`/discovery.json?ts=${getTimestamp()}`);
   if (!response.ok) {
     throw new Error('Failed to fetch directories');
   }
-  return response.json();
+
+  const data = await response.json();
+  // Remove all trailing slashes from the addresses
+  return data.map((directory: Directory) => ({
+    ...directory,
+    address: directory.address.replace(/\/$/, '')
+  }));
 };
 
-export const fetchTestRuns = async (directory: string): Promise<TestRun[]> => {
-  const response = await fetch(`${BASE_URL}/${directory}/listing.jsonl?ts=${getTimestamp()}`);
+export const fetchTestRuns = async (directory: Directory): Promise<TestRun[]> => {
+  const response = await fetch(`${directory.address}/listing.jsonl?ts=${getTimestamp()}`);
   if (!response.ok) {
     throw new Error('Failed to fetch test runs');
   }
