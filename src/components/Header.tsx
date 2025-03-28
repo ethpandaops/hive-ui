@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../contexts/useTheme';
 import { ThemeMode } from '../contexts/themeContext';
+import { Link } from 'react-router-dom';
 
 interface HeaderProps {
   showTables: boolean;
@@ -41,7 +42,8 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
       }}>
         {/* Logo and Navigation */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{
+          <Link to="/" style={{
+            textDecoration: 'none',
             marginRight: '1.5rem',
             display: 'flex',
             alignItems: 'center',
@@ -125,7 +127,7 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
                 Ethereum Testing Framework
               </span>
             </div>
-          </div>
+          </Link>
 
           <nav>
             <ul style={{ display: 'flex', gap: '1.5rem', padding: 0, margin: 0, listStyle: 'none' }}>

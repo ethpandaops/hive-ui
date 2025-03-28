@@ -1,6 +1,7 @@
 import { TestRun } from '../types';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { getStatusStyles } from '../utils/statusHelpers';
+import { Link } from 'react-router-dom';
 
 interface TestResultsTableProps {
   runs: TestRun[];
@@ -14,6 +15,7 @@ interface TestResultsTableProps {
 
 const TestResultsTable = ({
   runs,
+  directory,
   directoryAddress,
   testNameFilter,
   clientFilter,
@@ -277,10 +279,8 @@ const TestResultsTable = ({
                   whiteSpace: 'nowrap',
                   textAlign: 'right'
                 }}>
-                  <a
-                    href={`${directoryAddress}/suite.html?suiteid=${fileName}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    to={`/test/${directory}/${fileName}`}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -310,7 +310,7 @@ const TestResultsTable = ({
                       <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 0 0 2 4.25v11.5A2.25 2.25 0 0 0 4.25 18h11.5A2.25 2.25 0 0 0 18 15.75V4.25A2.25 2.25 0 0 0 15.75 2H4.25ZM4 13.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75ZM4.75 6.5a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5ZM4 9.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 4 9.5Z" clipRule="evenodd" />
                     </svg>
                     Details
-                  </a>
+                  </Link>
                 </td>
               </tr>
             );

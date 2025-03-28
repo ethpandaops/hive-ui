@@ -22,3 +22,38 @@ export interface TestGroup {
   clients: string[];
   runs: TestRun[];
 }
+
+export interface TestClientInfo {
+  id: string;
+  ip: string;
+  name: string;
+  instantiatedAt: string;
+  logFile: string;
+}
+
+export interface TestSummaryResult {
+  pass: boolean;
+  log: {
+    begin: number;
+    end: number;
+  };
+}
+
+export interface TestCaseDetail {
+  name: string;
+  description: string;
+  start: string;
+  end: string;
+  summaryResult: TestSummaryResult;
+  clientInfo: Record<string, TestClientInfo>;
+}
+
+export interface TestDetail {
+  id: number;
+  name: string;
+  description: string;
+  clientVersions: Record<string, string>;
+  testCases: Record<string, TestCaseDetail>;
+  simLog: string;
+  testDetailsLog: string;
+}

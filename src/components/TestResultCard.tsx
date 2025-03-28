@@ -1,6 +1,7 @@
 import { format, isValid } from 'date-fns';
 import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
+import { Link } from 'react-router-dom';
 
 type GroupBy = 'test' | 'client';
 
@@ -12,17 +13,15 @@ interface TestResultCardProps {
   index: number;
 }
 
-const TestResultCard = ({ run, groupBy, directoryAddress }: TestResultCardProps) => {
+const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResultCardProps) => {
   const statusStyles = getStatusStyles(run);
   const displayName = groupBy === 'test'
     ? run.clients.join(', ')  // When grouped by test, show clients
     : run.name.split('/').slice(1).join('/'); // When grouped by client, show test name
 
   return (
-    <a
-      href={`${directoryAddress}/suite.html?suiteid=${run.fileName}`}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      to={`/test/${directory}/${run.fileName}`}
       style={{
         backgroundColor: 'var(--card-bg, #ffffff)',
         borderRadius: '0.375rem',
@@ -149,7 +148,7 @@ const TestResultCard = ({ run, groupBy, directoryAddress }: TestResultCardProps)
           {formatDate(run.start)}
         </div>
       </div>
-    </a>
+    </Link>
   );
 }
 

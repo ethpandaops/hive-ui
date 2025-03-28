@@ -228,8 +228,10 @@ const TestResults = ({ showTables }: TestResultsProps) => {
             border: isInactive ?
               '1px dashed var(--warning-border, rgba(245, 158, 11, 0.8))' :
               '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-            margin: '0 0.5rem 1.5rem 0.5rem',
-            opacity: isInactive ? 0.8 : 1
+
+            opacity: isInactive ? 0.8 : 1,
+            maxWidth: '1400px',
+            margin: '20px auto'
           }}>
             <div
               onClick={() => toggleDirectory(directory)}

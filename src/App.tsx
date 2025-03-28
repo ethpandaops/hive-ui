@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import TestResults from './components/TestResults';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -27,11 +28,26 @@ function MainApp() {
   );
 }
 
+// Create router with routes
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <MainApp />
+  },
+  {
+    path: '/test/:discoveryName/:fileName',
+    lazy: async () => {
+      const { default: TestDetail } = await import('./components/TestDetail');
+      return { Component: TestDetail };
+    }
+  }
+]);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <MainApp />
+        <RouterProvider router={router} />
       </ThemeProvider>
     </QueryClientProvider>
   );
