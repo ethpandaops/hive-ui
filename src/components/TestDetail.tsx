@@ -8,10 +8,11 @@ import Header from './Header';
 import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
 import DOMPurify from 'dompurify';
+import Breadcrumb from './Breadcrumb';
 
 const TestDetail = () => {
   const { isDarkMode } = useTheme();
-  const { discoveryName, fileName } = useParams<{ discoveryName: string, fileName: string }>();
+  const { discoveryName, suiteid } = useParams<{ discoveryName: string, suiteid: string }>();
   const [discoveryAddress, setDiscoveryAddress] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedEntryCount, setSelectedEntryCount] = useState<number>(100);
@@ -21,6 +22,9 @@ const TestDetail = () => {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Get the file name with .json extension for API calls
+  const fileName = suiteid ? `${suiteid}.json` : '';
 
   // Fetch directories to get the discovery address
   const { data: directories } = useQuery({
@@ -38,11 +42,14 @@ const TestDetail = () => {
     }
   }, [directories, discoveryName]);
 
-  // Fetch test details
+  // Fetch test details - ensure fileName has .json extension
   const { data: testDetail, isLoading } = useQuery<TestDetailType>({
     queryKey: ['testDetail', discoveryAddress, fileName],
-    queryFn: () => fetchTestDetail(discoveryAddress!, fileName!),
-    enabled: !!discoveryAddress && !!fileName,
+    queryFn: () => {
+      console.log(`Fetching test detail for ${discoveryAddress}/${fileName}`);
+      return fetchTestDetail(discoveryAddress!, fileName!);
+    },
+    enabled: !!discoveryAddress && !!suiteid,
   });
 
   // Parse the URL query parameters on mount
@@ -451,27 +458,6 @@ const TestDetail = () => {
     transition: 'background-color 0.2s ease'
   });
 
-  // Breadcrumb style
-  const breadcrumbStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '0.875rem',
-    margin: '1.5rem 0',
-    color: isDarkMode ? '#94a3b8' : '#64748b'
-  };
-
-  const breadcrumbLinkStyle: React.CSSProperties = {
-    color: '#6366f1',
-    textDecoration: 'none',
-    fontWeight: '500',
-    transition: 'color 0.2s ease'
-  };
-
-  const breadcrumbSeparatorStyle: React.CSSProperties = {
-    margin: '0 0.5rem',
-    color: isDarkMode ? '#475569' : '#cbd5e1'
-  };
-
   return (
     <div style={containerStyle}>
       <Header showTables={showTables} setShowTables={setShowTables} />
@@ -491,13 +477,13 @@ const TestDetail = () => {
         ) : testDetail ? (
           <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
             {/* Breadcrumb navigation */}
-            <div style={breadcrumbStyle}>
-              <Link to="/" style={breadcrumbLinkStyle}>Home</Link>
-              <span style={breadcrumbSeparatorStyle}>/</span>
-              <Link to={`/?group=${discoveryName}`} style={breadcrumbLinkStyle}>{discoveryName}</Link>
-              <span style={breadcrumbSeparatorStyle}>/</span>
-              <span>{testDetail.name} <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>({fileName?.replace('.json', '')})</span></span>
-            </div>
+            <Breadcrumb
+              items={[
+                { label: 'Home', link: '/' },
+                { label: discoveryName || '', link: `/?group=${discoveryName}` },
+                { label: testDetail.name, sublabel: suiteid }
+              ]}
+            />
 
             {/* Main content */}
             <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
@@ -663,6 +649,7 @@ const TestDetail = () => {
                                   const end = new Date(testCase.end).getTime();
                                   return !isNaN(start) && !isNaN(end) && end >= start;
                                 } catch (error) {
+                                  console.error('Error parsing timestamp:', error);
                                   return false;
                                 }
                               });
@@ -714,8 +701,8 @@ const TestDetail = () => {
                         {/* View Full Simulator Log button */}
                         <div>
                           <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>SIMULATOR LOG</div>
-                          <a
-                            href={`${discoveryAddress}/results/${testDetail.simLog}`}
+                          <Link
+                            to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(testDetail.simLog)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -735,7 +722,7 @@ const TestDetail = () => {
                               <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                             </svg>
                             View Full Simulator Log
-                          </a>
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -963,8 +950,8 @@ const TestDetail = () => {
                             </div>
                           </td>
                           <td style={tableCellStyle} onClick={(e) => e.stopPropagation()}>
-                            <a
-                              href={`${discoveryAddress}/results/${Object.values(testCase.clientInfo)[0]?.logFile || ''}`}
+                            <Link
+                              to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(Object.values(testCase.clientInfo)[0]?.logFile || '')}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
@@ -984,7 +971,7 @@ const TestDetail = () => {
                                 <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                               </svg>
                               View Client Log
-                            </a>
+                            </Link>
                           </td>
                         </tr>
 
@@ -1050,8 +1037,8 @@ const TestDetail = () => {
                                         >
                                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                             <span style={{ fontWeight: '500', wordBreak: 'break-word' }}>{info.name}</span>
-                                            <a
-                                              href={`${discoveryAddress}/results/${info.logFile}`}
+                                            <Link
+                                              to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(info.logFile)}`}
                                               target="_blank"
                                               rel="noopener noreferrer"
                                               style={{
@@ -1065,7 +1052,7 @@ const TestDetail = () => {
                                               }}
                                             >
                                               View Log
-                                            </a>
+                                            </Link>
                                           </div>
 
                                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>

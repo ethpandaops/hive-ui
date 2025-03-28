@@ -35,10 +35,25 @@ const router = createHashRouter([
     element: <MainApp />
   },
   {
-    path: '/test/:discoveryName/:fileName',
+    path: '/test/:discoveryName/:suiteid',
     lazy: async () => {
-      const { default: TestDetail } = await import('./components/TestDetail');
-      return { Component: TestDetail };
+      try {
+        const { default: TestDetail } = await import('./components/TestDetail');
+        return { Component: TestDetail };
+      } catch (error) {
+        console.error('Failed to load TestDetail component:', error);
+        // Return a placeholder component if the import fails
+        return {
+          Component: () => <div>Test Details Loading Error</div>
+        };
+      }
+    }
+  },
+  {
+    path: '/logs/:group/:suiteId/:logFile',
+    lazy: async () => {
+      const { default: LogViewer } = await import('./components/LogViewer');
+      return { Component: LogViewer };
     }
   }
 ]);

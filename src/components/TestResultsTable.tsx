@@ -279,7 +279,7 @@ const TestResultsTable = ({
                   textAlign: 'right'
                 }}>
                   <Link
-                    to={`/test/${directory}/${fileName}`}
+                    to={`/test/${directory}/${fileName.replace(/\.json$/, '')}`}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',

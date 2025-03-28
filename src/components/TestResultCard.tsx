@@ -19,9 +19,12 @@ const TestResultCard = ({ run, groupBy, directory }: TestResultCardProps) => {
     ? run.clients.join(', ')  // When grouped by test, show clients
     : run.name.split('/').slice(1).join('/'); // When grouped by client, show test name
 
+  // Remove .json extension for the URL
+  const suiteid = run.fileName.replace(/\.json$/, '');
+
   return (
     <Link
-      to={`/test/${directory}/${run.fileName}`}
+      to={`/test/${directory}/${suiteid}`}
       style={{
         backgroundColor: 'var(--card-bg, #ffffff)',
         borderRadius: '0.375rem',
