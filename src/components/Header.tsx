@@ -38,7 +38,9 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '1rem 1.5rem'
+        padding: '1rem 1.5rem',
+        maxWidth: '1400px',
+        margin: '0 auto',
       }}>
         {/* Logo and Navigation */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -47,7 +49,8 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
             marginRight: '1.5rem',
             display: 'flex',
             alignItems: 'center',
-            color: '#3b82f6'
+            color: '#3b82f6',
+
           }}>
             <div
               style={{
