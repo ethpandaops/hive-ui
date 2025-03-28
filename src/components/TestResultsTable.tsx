@@ -5,6 +5,7 @@ import { getStatusStyles } from '../utils/statusHelpers';
 interface TestResultsTableProps {
   runs: TestRun[];
   directory: string;
+  directoryAddress: string;
   testNameFilter: string;
   clientFilter: string;
   setTestNameFilter: (value: string) => void;
@@ -14,6 +15,7 @@ interface TestResultsTableProps {
 const TestResultsTable = ({
   runs,
   directory,
+  directoryAddress,
   testNameFilter,
   clientFilter,
   setTestNameFilter,
@@ -277,7 +279,7 @@ const TestResultsTable = ({
                   textAlign: 'right'
                 }}>
                   <a
-                    href={`/${directory}/suite.html?suiteid=${fileName}`}
+                    href={`${directoryAddress}/suite.html?suiteid=${fileName}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{

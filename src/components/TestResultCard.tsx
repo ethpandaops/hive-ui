@@ -8,10 +8,11 @@ interface TestResultCardProps {
   run: TestRun;
   groupBy: GroupBy;
   directory: string;
+  directoryAddress: string;
   index: number;
 }
 
-const TestResultCard = ({ run, groupBy, directory }: TestResultCardProps) => {
+const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResultCardProps) => {
   const statusStyles = getStatusStyles(run);
   const displayName = groupBy === 'test'
     ? run.clients.join(', ')  // When grouped by test, show clients
@@ -19,7 +20,7 @@ const TestResultCard = ({ run, groupBy, directory }: TestResultCardProps) => {
 
   return (
     <a
-      href={`/${directory}/suite.html?suiteid=${run.fileName}`}
+      href={`${directoryAddress}/suite.html?suiteid=${run.fileName}`}
       target="_blank"
       rel="noopener noreferrer"
       style={{

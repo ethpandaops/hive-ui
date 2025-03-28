@@ -8,9 +8,10 @@ interface TestResultGroupProps {
   groupRuns: TestRun[];
   groupBy: GroupBy;
   directory: string;
+  directoryAddress: string;
 }
 
-const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory }: TestResultGroupProps) => {
+const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory, directoryAddress }: TestResultGroupProps) => {
   return (
     <div style={{
       backgroundColor: 'var(--card-bg, #ffffff)',
@@ -59,6 +60,7 @@ const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory }: TestResult
             run={run}
             groupBy={groupBy}
             directory={directory}
+            directoryAddress={directoryAddress}
             index={index}
           />
         ))}

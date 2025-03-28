@@ -19,20 +19,24 @@ const TestResults = ({ showTables }: TestResultsProps) => {
   const [groupBy, setGroupBy] = useState<GroupBy>('test');
   const [testNameFilter, setTestNameFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
+  const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
 
   const { data: directories, isLoading: isLoadingDirs } = useQuery<Directory[]>({
     queryKey: ['directories'],
     queryFn: fetchDirectories,
   });
 
-  // Set all directories as collapsed by default
+  // Set all directories as collapsed by default and store directory addresses
   useEffect(() => {
     if (directories) {
       const collapsed: Record<string, boolean> = {};
+      const addresses: Record<string, string> = {};
       directories.forEach(dir => {
         collapsed[dir.name] = true;
+        addresses[dir.name] = dir.address;
       });
       setCollapsedDirectories(collapsed);
+      setDirectoryAddresses(addresses);
     }
   }, [directories]);
 
@@ -471,7 +475,7 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                 )}
 
                 <a
-                  href={`/${directory}/`}
+                  href={`${directoryAddresses[directory]}/`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -625,6 +629,7 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                         groupRuns={groupRuns}
                         groupBy={groupBy}
                         directory={directory}
+                        directoryAddress={directoryAddresses[directory]}
                       />
                     ))}
                   </div>
@@ -635,6 +640,7 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                   <TestResultsTable
                     runs={runs}
                     directory={directory}
+                    directoryAddress={directoryAddresses[directory]}
                     testNameFilter={testNameFilter}
                     clientFilter={clientFilter}
                     setTestNameFilter={setTestNameFilter}
