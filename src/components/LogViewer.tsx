@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchDirectories } from '../services/api';
 import Prism from 'prismjs';
@@ -57,6 +57,12 @@ const logViewerStyles = `
   line-height: inherit;
 }
 
+.highlighted-line {
+  background-color: rgba(255, 255, 0, 0.15);
+  display: inline-block;
+  width: 100%;
+}
+
 .line-numbers-wrapper {
   position: absolute;
   top: 0;
@@ -78,6 +84,20 @@ const logViewerStyles = `
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding-left: 10px;
+}
+
+.line-number:hover {
+  color: #fff;
+}
+
+.line-number.active {
+  color: #fff;
+  font-weight: bold;
+  background-color: rgba(255, 255, 0, 0.3);
+  position: relative;
 }
 
 .raw-log-link {
@@ -106,9 +126,20 @@ const logViewerStyles = `
 
 const LogViewer = () => {
   const params = useParams<{ group: string, suiteId: string, logFile: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Create refs to access DOM elements directly
+  const logContentRef = useRef<HTMLPreElement>(null);
+  const lineRefs = useRef<{ [key: number]: HTMLSpanElement }>({});
+  const hasScrolledRef = useRef<boolean>(false);
+
   const group = params.group || '';
   const suiteId = params.suiteId || '';
   const logFile = params.logFile || '';
+
+  // Get the line number from URL query params
+  const selectedLine = searchParams.get('line') ? parseInt(searchParams.get('line') || '0') : null;
 
   const [logContent, setLogContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -127,16 +158,33 @@ const LogViewer = () => {
   // Get directory address for the group
   const discoveryAddress = directories?.find(dir => dir.name === group)?.address || '';
 
-  useEffect(() => {
-    // Add the custom styles to the document
-    const styleElement = document.createElement('style');
-    styleElement.textContent = logViewerStyles;
-    document.head.appendChild(styleElement);
 
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
+  // Handle line number click
+  const handleLineClick = (lineNumber: number) => {
+    // Prevent page refresh by using replace: true
+    setSearchParams({ line: lineNumber.toString() }, { replace: true });
+    scrollToLine(lineNumber);
+  };
+
+  // Scroll to specified line number using element ID
+  const scrollToLine = (lineNumber: number) => {
+    const lineId = `L${lineNumber}`;
+    const lineElement = document.getElementById(lineId);
+
+    if (lineElement) {
+      lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  // Scroll to the selected line when URL params change or content loads
+  useEffect(() => {
+    if (!loading && selectedLine) {
+      // Ensure the DOM is ready before scrolling
+      setTimeout(() => {
+        scrollToLine(selectedLine);
+      }, 100);
+    }
+  }, [loading, selectedLine]);
 
   useEffect(() => {
     const fetchLogFile = async () => {
@@ -159,6 +207,7 @@ const LogViewer = () => {
         }
 
         const text = await response.text();
+        console.log(`[DEBUG] Log file fetched, length: ${text.length}`);
         setLogContent(text);
 
         // Calculate line count and file size
@@ -247,6 +296,7 @@ const LogViewer = () => {
                   </h2>
                   <div className="log-stats">
                     {lineCount} lines · {fileSize}
+                    {selectedLine && ` · Line ${selectedLine} selected`}
                   </div>
                 </div>
                 <a
@@ -270,12 +320,18 @@ const LogViewer = () => {
                   }}
                 >
                   {lineNumbers.map(num => (
-                    <div key={num} className="line-number">
+                    <div
+                      key={num}
+                      id={`L${num}`}
+                      className={`line-number ${selectedLine === parseInt(num) ? 'active' : ''}`}
+                      onClick={() => handleLineClick(parseInt(num))}
+                    >
                       {num}
                     </div>
                   ))}
                 </div>
                 <pre
+                  ref={logContentRef}
                   className="log-content"
                   style={{
                     marginTop: 0,
@@ -284,7 +340,9 @@ const LogViewer = () => {
                     paddingBottom: '0.5em'
                   }}
                 >
-                  <code className="language-log">{logContent}</code>
+                  <code className="language-log">
+                    {logContent}
+                  </code>
                 </pre>
               </div>
             </div>
