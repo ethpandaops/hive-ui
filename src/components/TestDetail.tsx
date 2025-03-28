@@ -413,13 +413,6 @@ const TestDetail = () => {
     position: 'relative'
   };
 
-  // Client info card style
-  const clientInfoCardStyle: React.CSSProperties = {
-    padding: '0.75rem',
-    borderRadius: '0.5rem',
-    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`, // Dark or light border
-    backgroundColor: isDarkMode ? '#334155' : '#f1f5f9', // Dark blue or light gray
-  };
 
   // Light text style
   const lightTextStyle: React.CSSProperties = {
