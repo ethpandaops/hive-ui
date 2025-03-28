@@ -445,8 +445,23 @@ const TestDetail = () => {
 
   // Function to safely render HTML content
   const sanitizeAndRenderHTML = (html: string) => {
+    // First sanitize the HTML
     const sanitizedHTML = DOMPurify.sanitize(html);
-    return <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+
+    // Check if it already has anchor tags - if so, don't process further to avoid nesting links
+    if (sanitizedHTML.includes('<a ')) {
+      return <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+    }
+
+    // URL regex pattern to detect URLs in text
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+
+    // Replace plain URLs with clickable links
+    const htmlWithLinks = sanitizedHTML.replace(urlRegex, (url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #6366f1; text-decoration: underline;">${url}</a>`;
+    });
+
+    return <div dangerouslySetInnerHTML={{ __html: htmlWithLinks }} />;
   };
 
   // Table row style with hover effect
@@ -1026,56 +1041,6 @@ const TestDetail = () => {
                                     </div>
                                   </div>
 
-                                  {/* Client Info section */}
-                                  <div>
-                                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Client Info</h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', maxWidth: '100%', overflow: 'hidden' }}>
-                                      {Object.entries(testCase.clientInfo).map(([clientId, info]) => (
-                                        <div
-                                          key={clientId}
-                                          style={clientInfoCardStyle}
-                                        >
-                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                            <span style={{ fontWeight: '500', wordBreak: 'break-word' }}>{info.name}</span>
-                                            <Link
-                                              to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(info.logFile)}`}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              style={{
-                                                color: '#6366f1',
-                                                backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
-                                                borderRadius: '0.25rem',
-                                                padding: '0.25rem 0.5rem',
-                                                fontSize: '0.75rem',
-                                                textDecoration: 'none',
-                                                whiteSpace: 'nowrap'
-                                              }}
-                                            >
-                                              View Log
-                                            </Link>
-                                          </div>
-
-                                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
-                                            <div>
-                                              <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>ID</div>
-                                              <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={info.id}>
-                                                {info.id.substring(0, 8)}...
-                                              </div>
-                                            </div>
-                                            <div>
-                                              <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>IP</div>
-                                              <div>{info.ip}</div>
-                                            </div>
-
-                                            <div style={{ gridColumn: 'span 2' }}>
-                                              <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>INSTANTIATED AT</div>
-                                              <div>{formatDate(info.instantiatedAt)}</div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
                                 </div>
                               </div>
                             </td>
