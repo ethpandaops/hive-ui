@@ -2,13 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { fetchDirectories, fetchTestDetail } from '../services/api';
-import { TestDetail as TestDetailType, TestCaseDetail } from '../types';
+import { TestDetail as TestDetailType } from '../types';
 import { format, isValid } from 'date-fns';
 import Header from './Header';
 import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
 import DOMPurify from 'dompurify';
-import { getStatusStyles } from '../utils/statusHelpers';
 
 const TestDetail = () => {
   const { isDarkMode } = useTheme();
@@ -297,17 +296,6 @@ const TestDetail = () => {
     flexDirection: 'column'
   };
 
-  // Back link style
-  const backLinkStyle: React.CSSProperties = {
-    color: '#6366f1', // Indigo color for links works in both themes
-    textDecoration: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    marginTop: '1.5rem',
-    marginBottom: '1.5rem'
-  };
 
   // Card style updated to match TestResultCard
   const cardStyle: React.CSSProperties = {
@@ -383,21 +371,6 @@ const TestDetail = () => {
     fontWeight: '600',
     display: 'inline-flex',
     alignItems: 'center'
-  };
-
-  // Button style
-  const buttonStyle: React.CSSProperties = {
-    backgroundColor: '#3b82f6', // Blue works for both themes
-    color: '#ffffff',
-    padding: '0.5rem 1rem',
-    borderRadius: '0.375rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    display: 'inline-flex',
-    alignItems: 'center',
-    border: 'none',
-    cursor: 'pointer',
-    textDecoration: 'none'
   };
 
   // Input style
@@ -478,6 +451,27 @@ const TestDetail = () => {
     transition: 'background-color 0.2s ease'
   });
 
+  // Breadcrumb style
+  const breadcrumbStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: '0.875rem',
+    margin: '1.5rem 0',
+    color: isDarkMode ? '#94a3b8' : '#64748b'
+  };
+
+  const breadcrumbLinkStyle: React.CSSProperties = {
+    color: '#6366f1',
+    textDecoration: 'none',
+    fontWeight: '500',
+    transition: 'color 0.2s ease'
+  };
+
+  const breadcrumbSeparatorStyle: React.CSSProperties = {
+    margin: '0 0.5rem',
+    color: isDarkMode ? '#475569' : '#cbd5e1'
+  };
+
   return (
     <div style={containerStyle}>
       <Header showTables={showTables} setShowTables={setShowTables} />
@@ -496,6 +490,14 @@ const TestDetail = () => {
           </div>
         ) : testDetail ? (
           <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            {/* Breadcrumb navigation */}
+            <div style={breadcrumbStyle}>
+              <Link to="/" style={breadcrumbLinkStyle}>Home</Link>
+              <span style={breadcrumbSeparatorStyle}>/</span>
+              <Link to={`/?group=${discoveryName}`} style={breadcrumbLinkStyle}>{discoveryName}</Link>
+              <span style={breadcrumbSeparatorStyle}>/</span>
+              <span>{testDetail.name} <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>({fileName?.replace('.json', '')})</span></span>
+            </div>
 
             {/* Main content */}
             <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>

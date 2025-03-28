@@ -1,5 +1,5 @@
 import { TestRun } from '../types';
-import { format, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
 
@@ -16,7 +16,6 @@ interface TestResultsTableProps {
 const TestResultsTable = ({
   runs,
   directory,
-  directoryAddress,
   testNameFilter,
   clientFilter,
   setTestNameFilter,

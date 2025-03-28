@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import * as jdenticon from 'jdenticon';
 import TestResultGroup from './TestResultGroup';
 import TestResultsTable from './TestResultsTable';
+import { useSearchParams } from 'react-router-dom';
 
 type GroupBy = 'test' | 'client';
 
@@ -14,7 +15,8 @@ interface TestResultsProps {
 }
 
 const TestResults = ({ showTables }: TestResultsProps) => {
-  const [collapsedDirectories, setCollapsedDirectories] = useState<Record<string, boolean>>({});
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(searchParams.get('group'));
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
   const [groupBy, setGroupBy] = useState<GroupBy>('test');
   const [testNameFilter, setTestNameFilter] = useState('');
@@ -26,16 +28,13 @@ const TestResults = ({ showTables }: TestResultsProps) => {
     queryFn: fetchDirectories,
   });
 
-  // Set all directories as collapsed by default and store directory addresses
+  // Store directory addresses
   useEffect(() => {
     if (directories) {
-      const collapsed: Record<string, boolean> = {};
       const addresses: Record<string, string> = {};
       directories.forEach(dir => {
-        collapsed[dir.name] = true;
         addresses[dir.name] = dir.address;
       });
-      setCollapsedDirectories(collapsed);
       setDirectoryAddresses(addresses);
     }
   }, [directories]);
@@ -63,6 +62,17 @@ const TestResults = ({ showTables }: TestResultsProps) => {
     },
     enabled: !!directories,
   });
+
+  // Check if the expanded group from URL exists in the data
+  useEffect(() => {
+    if (testRunsByDir && expandedGroup) {
+      if (!testRunsByDir[expandedGroup]) {
+        // If the group from URL doesn't exist, clear it
+        setExpandedGroup(null);
+        setSearchParams({});
+      }
+    }
+  }, [testRunsByDir, expandedGroup, setSearchParams]);
 
   if (isLoadingDirs || isLoadingRuns) {
     return (
@@ -103,10 +113,15 @@ const TestResults = ({ showTables }: TestResultsProps) => {
   };
 
   const toggleDirectory = (directory: string) => {
-    setCollapsedDirectories(prev => ({
-      ...prev,
-      [directory]: !prev[directory]
-    }));
+    if (expandedGroup === directory) {
+      // If clicked on already expanded group, collapse it
+      setExpandedGroup(null);
+      setSearchParams({});
+    } else {
+      // Otherwise expand the clicked group and collapse others
+      setExpandedGroup(directory);
+      setSearchParams({ group: directory });
+    }
   };
 
   // Get the latest runs by test name or by client depending on grouping preference
@@ -210,7 +225,7 @@ const TestResults = ({ showTables }: TestResultsProps) => {
         return dirA.localeCompare(dirB);
       }).map(([directory, runs]) => {
         const mostRecentRun = getMostRecentRun(runs);
-        const isCollapsed = !!collapsedDirectories[directory];
+        const isCollapsed = directory !== expandedGroup;
         const recentRuns = getRecentRuns(runs, 50);
 
         // Check if directory is inactive (latest run > 7 days ago)
