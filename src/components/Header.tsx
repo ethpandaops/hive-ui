@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useTheme, ThemeMode } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/useTheme';
+import { ThemeMode } from '../contexts/themeContext';
 
 interface HeaderProps {
   showTables: boolean;
