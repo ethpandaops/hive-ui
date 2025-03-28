@@ -491,60 +491,6 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                   </div>
                 )}
 
-                <a
-                  href={`${directoryAddresses[directory]}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.8rem',
-                    color: isInactive
-                      ? 'var(--warning-text, #b45309)'
-                      : 'var(--text-secondary, #4b5563)',
-                    backgroundColor: isInactive
-                      ? 'var(--warning-bg, #fffbeb)'
-                      : 'var(--badge-bg, #f3f4f6)',
-                    borderRadius: '0.375rem',
-                    padding: '0.25rem 0.5rem',
-                    textDecoration: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    border: isInactive
-                      ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                      : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                    width: '120px',
-                    flexShrink: 0
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--card-bg, white)';
-                    e.currentTarget.style.borderColor = isInactive
-                      ? 'var(--warning-border, #f59e0b)'
-                      : 'var(--primary-color, #3b82f6)';
-                    e.currentTarget.style.color = isInactive
-                      ? 'var(--warning-text, #b45309)'
-                      : 'var(--primary-color, #3b82f6)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = isInactive
-                      ? 'var(--warning-bg, #fffbeb)'
-                      : 'var(--badge-bg, #f3f4f6)';
-                    e.currentTarget.style.borderColor = isInactive
-                      ? 'var(--warning-border, rgba(245, 158, 11, 0.3))'
-                      : 'var(--border-color, rgba(229, 231, 235, 0.8))';
-                    e.currentTarget.style.color = isInactive
-                      ? 'var(--warning-text, #b45309)'
-                      : 'var(--text-secondary, #4b5563)';
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                       style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem' }}>
-                    <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 0 0 2 4.25v11.5A2.25 2.25 0 0 0 4.25 18h11.5A2.25 2.25 0 0 0 18 15.75V4.25A2.25 2.25 0 0 0 15.75 2H4.25ZM4 13.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5ZM4.75 6.5a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5ZM4 9.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 4 9.5Z" clipRule="evenodd" />
-                  </svg>
-                  <span style={{ fontWeight: '500' }}>View Details</span>
-                </a>
 
               </div>
             </div>
