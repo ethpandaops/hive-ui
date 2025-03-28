@@ -30,7 +30,7 @@ Missing features:
 ### Prerequisites
 
 - Node.js (v18 or higher recommended)
-- npm or yarn
+- npm
 
 ### Installation
 
@@ -42,16 +42,12 @@ cd hive-ui
 
 2. Install dependencies
 ```bash
-npm install
-# or
-yarn
+make setup
 ```
 
 3. Start the development server
 ```bash
-npm run dev
-# or
-yarn dev
+make dev
 ```
 
 4. Open your browser and navigate to `http://localhost:5173`
@@ -59,12 +55,31 @@ yarn dev
 ## Building for Production
 
 ```bash
-npm run build
-# or
-yarn build
+make build
 ```
 
 The build artifacts will be stored in the `dist/` directory.
+
+## Test results endpoint configuration
+
+We use the [`discovery.json`](/public/discovery.json) file to determine the available result directories.
+
+The following example shows the format of the `discovery.json` file:
+
+```json
+[
+  {
+    "name": "pectra",
+    "address": "https://hive.ethpandaops.io/pectra/"
+  }
+]
+```
+
+The address should be the directory where the Hive results are stored.
+
+The UI expects the following files to be there:
+- `listing.jsonl` file which contains a list of recent test results separated by newlines.
+- `results/` directory that contains more information about specific test results.
 
 
 ## Contributing
