@@ -14,7 +14,6 @@ interface TestResultsTableProps {
 
 const TestResultsTable = ({
   runs,
-  directory,
   directoryAddress,
   testNameFilter,
   clientFilter,

@@ -12,7 +12,7 @@ interface TestResultCardProps {
   index: number;
 }
 
-const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResultCardProps) => {
+const TestResultCard = ({ run, groupBy, directoryAddress }: TestResultCardProps) => {
   const statusStyles = getStatusStyles(run);
   const displayName = groupBy === 'test'
     ? run.clients.join(', ')  // When grouped by test, show clients
