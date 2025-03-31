@@ -462,7 +462,7 @@ const LogViewer = () => {
       flexDirection: 'column'
     }}>
       <Header showTables={showTables} setShowTables={() => {}} />
-      <main style={{ flex: 1, padding: '16px' }}>
+      <main style={{ flex: 1 }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           {/* Breadcrumb navigation */}
           <Breadcrumb
