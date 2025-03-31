@@ -37,7 +37,6 @@ const router = createHashRouter([
   },
   {
     path: '/test/:discoveryName/:suiteid',
-    // @ts-ignore - Module resolution issue with TypeScript, but works at runtime
     lazy: async () => {
       try {
         const module = await import('./components/TestDetail');
@@ -52,7 +51,6 @@ const router = createHashRouter([
   },
   {
     path: '/logs/:group/:suiteId/:logFile',
-    // @ts-ignore - Module resolution issue with TypeScript, but works at runtime
     lazy: async () => {
       try {
         const module = await import('./components/LogViewer');
