@@ -200,7 +200,6 @@ const TestResults = ({ showTables }: TestResultsProps) => {
   return (
     <div className="space-y-8" style={{
       margin: '1.5rem',
-      minHeight: 'calc(100vh - 100px)',
       backgroundColor: 'var(--bg-color)',
       color: 'var(--text-primary)'
     }}>
