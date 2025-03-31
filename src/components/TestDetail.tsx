@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { fetchDirectories, fetchTestDetail } from '../services/api';
-import { TestDetail as TestDetailType } from '../types';
+import { fetchDirectories, fetchTestDetail, fetchTestRuns } from '../services/api';
+import { TestDetail as TestDetailType, TestRun } from '../types';
 import { format, isValid } from 'date-fns';
 import Header from './Header';
 import Footer from './Footer';
@@ -20,6 +20,8 @@ const TestDetail = () => {
   const [showTables, setShowTables] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [relatedTestRuns, setRelatedTestRuns] = useState<TestRun[]>([]);
+  const [currentTestName, setCurrentTestName] = useState<string>('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -51,6 +53,55 @@ const TestDetail = () => {
     },
     enabled: !!discoveryAddress && !!suiteid,
   });
+
+  // Extract the test name without the client part (e.g., "test/consume-rlp" from "test/consume-rlp+reth_default")
+  useEffect(() => {
+    if (testDetail?.name) {
+      // Extract the test name part (before the '+')
+      const nameParts = testDetail.name.split('+');
+      if (nameParts.length > 0) {
+        setCurrentTestName(nameParts[0]);
+      }
+    }
+  }, [testDetail]);
+
+  // Fetch all test runs for the current discovery
+  const { data: allTestRuns, isLoading: isTestRunsLoading } = useQuery({
+    queryKey: ['testRuns', discoveryAddress],
+    queryFn: () => {
+      if (!discoveryAddress) return Promise.resolve([]);
+      return fetchTestRuns({ name: discoveryName || '', address: discoveryAddress });
+    },
+    enabled: !!discoveryAddress,
+  });
+
+  // Filter related test runs when we have both the test detail and all test runs
+  useEffect(() => {
+    if (testDetail && allTestRuns && currentTestName) {
+      // Get the current client combination
+      const currentClients = Object.keys(testDetail.clientVersions).sort().join(',');
+
+      // Filter runs that match the same test name and client combination
+      const filteredRuns = allTestRuns.filter(run => {
+        const runNameParts = run.name.split('+');
+        const runTestName = runNameParts[0];
+        const runClients = run.clients.sort().join(',');
+
+        return runTestName === currentTestName && runClients === currentClients;
+      });
+
+      setRelatedTestRuns(filteredRuns);
+    }
+  }, [testDetail, allTestRuns, currentTestName]);
+
+  // Handle run selection change
+  const handleRunChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedFileName = event.target.value;
+    if (selectedFileName && discoveryName) {
+      // Navigate to the selected test run
+      navigate(`/test/${discoveryName}/${selectedFileName.replace('.json', '')}`);
+    }
+  };
 
   // Parse the URL query parameters on mount
   useEffect(() => {
@@ -492,6 +543,186 @@ const TestDetail = () => {
                 { label: testDetail.name, sublabel: suiteid }
               ]}
             />
+
+            {/* Run Navigation */}
+            {relatedTestRuns.length > 1 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: '0.5rem',
+                marginTop: '0.75rem',
+                marginBottom: '1rem',
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.7)',
+                border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                boxShadow: isDarkMode ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.05)'
+              }}>
+                <div style={{
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  ...lightTextStyle,
+                  marginRight: '0.25rem'
+                }}>
+                  Run History:
+                </div>
+
+                {/* Previous Run Button */}
+                <button
+                  onClick={() => {
+                    const currentIndex = relatedTestRuns.findIndex(run => run.fileName === fileName);
+                    if (currentIndex < relatedTestRuns.length - 1) {
+                      const prevRun = relatedTestRuns[currentIndex + 1]; // Older runs have higher indices
+                      navigate(`/test/${discoveryName}/${prevRun.fileName.replace('.json', '')}`);
+                    }
+                  }}
+                  title="Previous (Older) Run"
+                  disabled={relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1}
+                  style={{
+                    backgroundColor: isDarkMode ? '#334155' : '#ffffff',
+                    color: isDarkMode ? '#f8fafc' : '#1e293b',
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '0.375rem',
+                    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                    cursor: relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1 ? 'not-allowed' : 'pointer',
+                    opacity: relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1 ? 0.5 : 1,
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '2rem'
+                  }}
+                >
+                  &lt;
+                </button>
+
+                {/* Runs Dropdown */}
+                {isTestRunsLoading ? (
+                  <div style={{
+                    fontSize: '0.875rem',
+                    padding: '0.35rem 0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                    borderRadius: '0.375rem',
+                    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                    height: '2.25rem',
+                    flex: '1'
+                  }}>
+                    <div style={{
+                      border: `2px solid ${isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)'}`,
+                      borderTopColor: '#6366f1',
+                      borderRadius: '50%',
+                      width: '0.75rem',
+                      height: '0.75rem',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    <span>Loading runs...</span>
+                  </div>
+                ) : (
+                  <select
+                    style={{
+                      ...selectStyle,
+                      minWidth: '260px',
+                      flex: '1',
+                      maxWidth: '400px',
+                      margin: '0 0.25rem',
+                      backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                      border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                      padding: '0.4rem 0.6rem'
+                    }}
+                    value={fileName}
+                    onChange={handleRunChange}
+                    title="Select a specific run"
+                  >
+                    {relatedTestRuns.map((run, index) => {
+                      const isCurrentRun = run.fileName === fileName;
+                      const runDate = new Date(run.start);
+                      const passRate = Math.round((run.passes / run.ntests) * 100);
+                      const relativePosition = index === 0
+                        ? 'Latest'
+                        : index === relatedTestRuns.length - 1
+                          ? 'Oldest'
+                          : `${index + 1} of ${relatedTestRuns.length}`;
+
+                      return (
+                        <option
+                          key={run.fileName}
+                          value={run.fileName}
+                          style={{
+                            backgroundColor: isDarkMode ? '#334155' : '#f1f5f9'
+                          }}
+                        >
+                          {`${format(runDate, 'MMM d, HH:mm')} - ${run.passes}/${run.ntests} passed (${passRate}%) ${isCurrentRun ? '(current)' : ''} - ${relativePosition}`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+
+                {/* Next Run Button */}
+                <button
+                  onClick={() => {
+                    const currentIndex = relatedTestRuns.findIndex(run => run.fileName === fileName);
+                    if (currentIndex > 0) {
+                      const nextRun = relatedTestRuns[currentIndex - 1]; // Newer runs have lower indices
+                      navigate(`/test/${discoveryName}/${nextRun.fileName.replace('.json', '')}`);
+                    }
+                  }}
+                  title="Next (Newer) Run"
+                  disabled={relatedTestRuns.findIndex(run => run.fileName === fileName) === 0}
+                  style={{
+                    backgroundColor: isDarkMode ? '#334155' : '#ffffff',
+                    color: isDarkMode ? '#f8fafc' : '#1e293b',
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '0.375rem',
+                    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                    cursor: relatedTestRuns.findIndex(run => run.fileName === fileName) === 0 ? 'not-allowed' : 'pointer',
+                    opacity: relatedTestRuns.findIndex(run => run.fileName === fileName) === 0 ? 0.5 : 1,
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '2rem'
+                  }}
+                >
+                  &gt;
+                </button>
+
+                {/* Latest Run Button */}
+                <button
+                  onClick={() => {
+                    if (relatedTestRuns.length > 0) {
+                      const latestRun = relatedTestRuns[0]; // First run is the most recent
+                      navigate(`/test/${discoveryName}/${latestRun.fileName.replace('.json', '')}`);
+                    }
+                  }}
+                  title="Latest Run"
+                  disabled={relatedTestRuns.findIndex(run => run.fileName === fileName) === 0}
+                  style={{
+                    backgroundColor: isDarkMode ? '#334155' : '#ffffff',
+                    color: isDarkMode ? '#f8fafc' : '#1e293b',
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '0.375rem',
+                    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                    cursor: relatedTestRuns.findIndex(run => run.fileName === fileName) === 0 ? 'not-allowed' : 'pointer',
+                    opacity: relatedTestRuns.findIndex(run => run.fileName === fileName) === 0 ? 0.5 : 1,
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '2rem'
+                  }}
+                >
+                  &gt;&gt;
+                </button>
+              </div>
+            )}
 
             {/* Main content */}
             <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
