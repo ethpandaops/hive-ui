@@ -304,38 +304,131 @@ const TestDetail = () => {
                   ...lightTextStyle,
                   marginRight: '0.25rem'
                 }}>
-                  Run History:
                 </div>
 
-                {/* Previous Run Button */}
-                <button
-                  onClick={() => {
-                    const currentIndex = relatedTestRuns.findIndex(run => run.fileName === fileName);
-                    if (currentIndex < relatedTestRuns.length - 1) {
-                      const prevRun = relatedTestRuns[currentIndex + 1]; // Older runs have higher indices
-                      navigate(`/test/${discoveryName}/${prevRun.fileName.replace('.json', '')}`);
-                    }
-                  }}
-                  title="Previous (Older) Run"
-                  disabled={relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1}
-                  style={{
-                    backgroundColor: isDarkMode ? '#334155' : '#ffffff',
-                    color: isDarkMode ? '#f8fafc' : '#1e293b',
-                    padding: '0.4rem 0.6rem',
-                    borderRadius: '0.375rem',
-                    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
-                    cursor: relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1 ? 'not-allowed' : 'pointer',
-                    opacity: relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1 ? 0.5 : 1,
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
+                {/* Run History Boxes Visualization */}
+                {relatedTestRuns.length > 0 && (
+                  <div style={{
                     display: 'flex',
+                    height: '1.75rem',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: '2rem'
-                  }}
-                >
-                  &lt;
-                </button>
+                    borderRadius: '0.375rem',
+                    padding: '0 0.5rem',
+                    marginRight: '0.75rem',
+                    overflow: 'hidden',
+                    flexShrink: 0
+                  }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        height: '100%',
+                        alignItems: 'center',
+                        justifyContent: relatedTestRuns.length > 40 ? 'flex-start' : 'space-evenly',
+                        width: '100%',
+                        gap: relatedTestRuns.length > 40 ? '0' : '2px',
+                        overflowX: relatedTestRuns.length > 40 ? 'auto' : 'visible',
+                        paddingBottom: relatedTestRuns.length > 40 ? '8px' : '0' // Add padding for scroll
+                      }}
+                      title="Run history visualization"
+                    >
+                      {/* Run history boxes - newest to oldest (left to right) */}
+                      {relatedTestRuns.map((run, index) => {
+                        // Calculate pass rate percentage with 2 decimal precision
+                        const exactPassRate = (run.passes / run.ntests) * 100;
+                        const formattedPassRate = exactPassRate.toFixed(2);
+                        const passRate = Math.floor(exactPassRate); // Integer part only for display
+
+                        // Determine box color based on test results
+                        let bgColor, textColor;
+                        if (run.fails === 0) {
+                          bgColor = isDarkMode ? 'rgba(16, 185, 129, 0.7)' : 'rgba(16, 185, 129, 0.7)'; // Green
+                          textColor = isDarkMode ? 'white' : 'white';
+                        } else if (run.passes > 0 && run.passes / run.ntests > 0.5) {
+                          bgColor = isDarkMode ? 'rgba(245, 158, 11, 0.7)' : 'rgba(245, 158, 11, 0.7)'; // Orange
+                          textColor = isDarkMode ? 'white' : 'black';
+                        } else {
+                          bgColor = isDarkMode ? 'rgba(239, 68, 68, 0.7)' : 'rgba(239, 68, 68, 0.7)'; // Red
+                          textColor = isDarkMode ? 'white' : 'black';
+                        }
+
+                        // Highlight current run
+                        const isCurrentRun = run.fileName === fileName;
+                        const borderWidth = isCurrentRun ? 2 : 0;
+                        const borderColor = isDarkMode ? 'white' : 'white';
+                        const boxOpacity = isCurrentRun ? 1 : 0.8;
+                        const boxShadow = isCurrentRun ?
+                          `0 0 0 2px ${isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.3)'}` :
+                          'none';
+
+                        // Calculate box dimensions based on number of runs
+                        const totalRuns = relatedTestRuns.length;
+                        let boxSize;
+
+                        if (totalRuns <= 10) {
+                          boxSize = '26px';
+                        } else if (totalRuns <= 20) {
+                          boxSize = '22px';
+                        } else if (totalRuns <= 30) {
+                          boxSize = '18px';
+                        } else if (totalRuns <= 40) {
+                          boxSize = '14px';
+                        } else {
+                          boxSize = '12px';
+                        }
+
+                        // Calculate font size based on box size
+                        const fontSize =
+                          totalRuns <= 10 ? '10px' :
+                          totalRuns <= 20 ? '9px' :
+                          totalRuns <= 30 ? '8px' :
+                          '0'; // Hide text for very small boxes
+
+                        return (
+                          <div
+                            key={`${run.fileName}-box`}
+                            style={{
+                              width: boxSize,
+                              height: boxSize,
+                              backgroundColor: bgColor,
+                              color: textColor,
+                              borderRadius: '3px',
+                              cursor: 'pointer',
+                              opacity: boxOpacity,
+                              border: isCurrentRun ? `${borderWidth}px solid ${borderColor}` : 'none',
+                              boxSizing: 'border-box',
+                              transition: 'all 0.2s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: fontSize,
+                              fontWeight: 'bold',
+                              flexShrink: 0,
+                              margin: '0 1px',
+                              boxShadow: boxShadow,
+                              transform: isCurrentRun ? 'scale(1.05)' : 'scale(1)'
+                            }}
+                            onClick={() => {
+                              navigate(`/test/${discoveryName}/${run.fileName.replace('.json', '')}`);
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.opacity = '1';
+                              e.currentTarget.style.transform = 'scale(1.1)';
+                              e.currentTarget.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.opacity = isCurrentRun ? '1' : '0.8';
+                              e.currentTarget.style.transform = isCurrentRun ? 'scale(1.05)' : 'scale(1)';
+                              e.currentTarget.style.boxShadow = isCurrentRun ? boxShadow : 'none';
+                            }}
+                            title={`${format(new Date(run.start), 'MMM d, HH:mm')} - ${run.passes}/${run.ntests} passed (${formattedPassRate}%)`}
+                          >
+                            {passRate == 100 ? `✓` : `${passRate}`}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Runs Dropdown */}
                 {isTestRunsLoading ? (
@@ -402,6 +495,35 @@ const TestDetail = () => {
                   </select>
                 )}
 
+                {/* Latest Run Button */}
+                <button
+                  onClick={() => {
+                    if (relatedTestRuns.length > 0) {
+                      const latestRun = relatedTestRuns[0]; // First run is the most recent
+                      navigate(`/test/${discoveryName}/${latestRun.fileName.replace('.json', '')}`);
+                    }
+                  }}
+                  title="Latest Run"
+                  disabled={relatedTestRuns.findIndex(run => run.fileName === fileName) === 0}
+                  style={{
+                    backgroundColor: isDarkMode ? '#334155' : '#ffffff',
+                    color: isDarkMode ? '#f8fafc' : '#1e293b',
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '0.375rem',
+                    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                    cursor: relatedTestRuns.findIndex(run => run.fileName === fileName) === 0 ? 'not-allowed' : 'pointer',
+                    opacity: relatedTestRuns.findIndex(run => run.fileName === fileName) === 0 ? 0.5 : 1,
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '2rem'
+                  }}
+                >
+                  &lt;&lt;
+                </button>
+
                 {/* Next Run Button */}
                 <button
                   onClick={() => {
@@ -429,27 +551,28 @@ const TestDetail = () => {
                     minWidth: '2rem'
                   }}
                 >
-                  &gt;
+                  &lt;
                 </button>
 
-                {/* Latest Run Button */}
+                {/* Previous Run Button */}
                 <button
                   onClick={() => {
-                    if (relatedTestRuns.length > 0) {
-                      const latestRun = relatedTestRuns[0]; // First run is the most recent
-                      navigate(`/test/${discoveryName}/${latestRun.fileName.replace('.json', '')}`);
+                    const currentIndex = relatedTestRuns.findIndex(run => run.fileName === fileName);
+                    if (currentIndex < relatedTestRuns.length - 1) {
+                      const prevRun = relatedTestRuns[currentIndex + 1]; // Older runs have higher indices
+                      navigate(`/test/${discoveryName}/${prevRun.fileName.replace('.json', '')}`);
                     }
                   }}
-                  title="Latest Run"
-                  disabled={relatedTestRuns.findIndex(run => run.fileName === fileName) === 0}
+                  title="Previous (Older) Run"
+                  disabled={relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1}
                   style={{
                     backgroundColor: isDarkMode ? '#334155' : '#ffffff',
                     color: isDarkMode ? '#f8fafc' : '#1e293b',
                     padding: '0.4rem 0.6rem',
                     borderRadius: '0.375rem',
                     border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
-                    cursor: relatedTestRuns.findIndex(run => run.fileName === fileName) === 0 ? 'not-allowed' : 'pointer',
-                    opacity: relatedTestRuns.findIndex(run => run.fileName === fileName) === 0 ? 0.5 : 1,
+                    cursor: relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1 ? 'not-allowed' : 'pointer',
+                    opacity: relatedTestRuns.findIndex(run => run.fileName === fileName) === relatedTestRuns.length - 1 ? 0.5 : 1,
                     fontWeight: '600',
                     fontSize: '0.875rem',
                     display: 'flex',
@@ -458,7 +581,7 @@ const TestDetail = () => {
                     minWidth: '2rem'
                   }}
                 >
-                  &gt;&gt;
+                  &gt;
                 </button>
               </div>
             )}
