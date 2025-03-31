@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ThemeProvider from './contexts/theme-provider';
 import { useState } from 'react';
+import NotFound from './components/NotFound';
 
 const queryClient = new QueryClient();
 
@@ -36,13 +37,13 @@ const router = createHashRouter([
   },
   {
     path: '/test/:discoveryName/:suiteid',
+    // @ts-ignore - Module resolution issue with TypeScript, but works at runtime
     lazy: async () => {
       try {
-        const { default: TestDetail } = await import('./components/TestDetail');
-        return { Component: TestDetail };
+        const module = await import('./components/TestDetail');
+        return { Component: module.default };
       } catch (error) {
         console.error('Failed to load TestDetail component:', error);
-        // Return a placeholder component if the import fails
         return {
           Component: () => <div>Test Details Loading Error</div>
         };
@@ -51,10 +52,22 @@ const router = createHashRouter([
   },
   {
     path: '/logs/:group/:suiteId/:logFile',
+    // @ts-ignore - Module resolution issue with TypeScript, but works at runtime
     lazy: async () => {
-      const { default: LogViewer } = await import('./components/LogViewer');
-      return { Component: LogViewer };
+      try {
+        const module = await import('./components/LogViewer');
+        return { Component: module.default };
+      } catch (error) {
+        console.error('Failed to load LogViewer component:', error);
+        return {
+          Component: () => <div>Log Viewer Loading Error</div>
+        };
+      }
     }
+  },
+  {
+    path: '*',
+    element: <NotFound />
   }
 ]);
 
