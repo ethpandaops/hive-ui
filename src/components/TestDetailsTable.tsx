@@ -110,7 +110,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
       newParams.set('testnumber', testId);
       setSearchParams(newParams, { replace: true });
     }
-  }, [expandedTestId, searchParams, setSearchParams]);
+  }, [expandedTestId, searchParams, setSearchParams, setExpandedTestId]);
 
   // Handle URL parameters on component mount - only run once
   useEffect(() => {
@@ -240,7 +240,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
       newParams.delete('testnumber');
       setSearchParams(newParams, { replace: true });
     }
-  }, [totalPages, searchParams, setSearchParams]);
+  }, [totalPages, searchParams, setSearchParams, setExpandedTestId]);
 
   // Modify pagination click handlers to use memoized functions
   const handleFirstPage = useCallback(() => {
@@ -294,7 +294,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
       newParams.set('page', '1');
       setSearchParams(newParams, { replace: true });
     }
-  }, [expandedTestId, searchParams, setSearchParams]);
+  }, [expandedTestId, searchParams, setSearchParams, setExpandedTestId]);
 
   // Entry count selector handler
   const handleEntryCountChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -311,7 +311,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     newParams.set('page', '1');
     newParams.delete('testnumber');
     setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, setExpandedTestId]);
 
   // Calculate test duration in a human-readable format
   const calculateDuration = (start: string, end: string) => {

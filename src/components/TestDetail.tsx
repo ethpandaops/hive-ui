@@ -332,7 +332,7 @@ const TestDetail = () => {
                       title="Run history visualization"
                     >
                       {/* Run history boxes - newest to oldest (left to right) */}
-                      {relatedTestRuns.map((run, index) => {
+                      {relatedTestRuns.map((run) => {
                         // Calculate pass rate percentage with 2 decimal precision
                         const exactPassRate = (run.passes / run.ntests) * 100;
                         const formattedPassRate = exactPassRate.toFixed(2);
