@@ -135,11 +135,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
       }
     }
 
-    // Handle search parameter
-    const searchParam = searchParams.get('search');
-    if (searchParam) {
-      setSearchTerm(searchParam);
-    }
+    // Removed search parameter handling
 
     if (testNumber && sortedTestCases.length > 0) {
       setExpandedTestId(testNumber);
@@ -224,10 +220,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
       }
     }
 
-    const searchParam = searchParams.get('search');
-    if (searchParam !== searchTerm) {
-      setSearchTerm(searchParam || '');
-    }
+    // Removed search parameter handling
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, totalPages]);
 
@@ -280,26 +273,28 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     }
   }, [currentPage, goToPage]);
 
-  // Search input handler
+  // Search input handler - just update local state, no URL changes
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
-
-    // Batch state updates
     setSearchTerm(newSearchTerm);
     setCurrentPage(1);
-    setExpandedTestId(null);
 
-    // Update URL with search term and reset page
-    const newParams = new URLSearchParams(searchParams);
-    if (newSearchTerm) {
-      newParams.set('search', newSearchTerm);
+    // Collapse any expanded row when search changes
+    if (expandedTestId) {
+      setExpandedTestId(null);
+
+      // Only update URL to remove testnumber, don't add search
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('testnumber');
+      newParams.set('page', '1');
+      setSearchParams(newParams, { replace: true });
     } else {
-      newParams.delete('search');
+      // Update page in URL without adding search
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('page', '1');
+      setSearchParams(newParams, { replace: true });
     }
-    newParams.set('page', '1');
-    newParams.delete('testnumber');
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [expandedTestId, searchParams, setSearchParams]);
 
   // Entry count selector handler
   const handleEntryCountChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -310,7 +305,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     setCurrentPage(1);
     setExpandedTestId(null);
 
-    // Update URL with new entry count and reset page
+    // Update URL with new entry count and reset page - no search parameter
     const newParams = new URLSearchParams(searchParams);
     newParams.set('entries', newEntryCount.toString());
     newParams.set('page', '1');
