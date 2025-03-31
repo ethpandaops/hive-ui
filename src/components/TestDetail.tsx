@@ -518,19 +518,22 @@ const TestDetail = () => {
                         {testStats.passes}
                       </div>
 
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        backgroundColor: isDarkMode ? 'rgba(127, 29, 29, 0.2)' : 'rgba(254, 202, 202, 0.3)',
-                        color: isDarkMode ? '#f87171' : '#dc2626',
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.75rem',
-                        fontWeight: '500'
-                      }}>
-                        <span style={{ marginRight: '0.25rem' }}>✕</span>
-                        {testStats.fails}
-                      </div>
+                      {/* Only show the fails count if there are fails */}
+                      {testStats.fails > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          backgroundColor: isDarkMode ? 'rgba(127, 29, 29, 0.2)' : 'rgba(254, 202, 202, 0.3)',
+                          color: isDarkMode ? '#f87171' : '#dc2626',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '500'
+                        }}>
+                          <span style={{ marginRight: '0.25rem' }}>✕</span>
+                          {testStats.fails}
+                        </div>
+                      )}
 
                       <div style={testStats.fails === 0 ? passStyle : failStyle}>
                         {testStats.fails === 0 ? 'All Pass' : 'Some Failed'}
