@@ -25,7 +25,6 @@ const TestComparison = () => {
   }, [searchParams]);
 
   const [discoveryAddress, setDiscoveryAddress] = useState<string | null>(null);
-  const [showTables, setShowTables] = useState(true);
   const [testDetails, setTestDetails] = useState<Record<string, TestDetail>>({});
 
   // Add state for pagination and search
@@ -519,7 +518,7 @@ const TestComparison = () => {
 
   return (
     <div style={containerStyle}>
-      <Header showTables={showTables} setShowTables={setShowTables} />
+      <Header />
 
       <div style={{ padding: '0 1.5rem', flex: 1 }}>
         {!discoveryAddress ? (

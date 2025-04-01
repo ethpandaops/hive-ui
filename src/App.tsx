@@ -4,14 +4,12 @@ import TestResults from './components/TestResults';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ThemeProvider from './contexts/theme-provider';
-import { useState } from 'react';
 import React from 'react';
 import NotFound from './components/NotFound';
 
 const queryClient = new QueryClient();
 
 function MainApp() {
-  const [showTables, setShowTables] = useState(true);
 
   return (
     <div style={{
@@ -21,9 +19,9 @@ function MainApp() {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      <Header showTables={showTables} setShowTables={setShowTables} />
+      <Header />
       <main style={{ flex: 1 }}>
-        <TestResults showTables={showTables} />
+        <TestResults />
       </main>
       <Footer />
     </div>

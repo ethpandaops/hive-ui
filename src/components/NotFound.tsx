@@ -35,7 +35,6 @@ interface BeeObject {
 
 const NotFound = () => {
   const { isDarkMode } = useTheme();
-  const [showTables, setShowTables] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [bees, setBees] = useState<BeeObject[]>([]);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -274,7 +273,7 @@ const NotFound = () => {
 
   return (
     <div style={containerStyle} ref={containerRef}>
-      <Header showTables={showTables} setShowTables={setShowTables} />
+      <Header />
 
       {/* Flying bees in the background */}
       {bees.map((bee) => (

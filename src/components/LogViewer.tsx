@@ -195,7 +195,6 @@ const LogViewer = () => {
   const [error, setError] = useState<string | null>(null);
   const [lineCount, setLineCount] = useState<number>(0);
   const [fileSize, setFileSize] = useState<string>('0 B');
-  const [showTables] = useState<boolean>(true);
   const [lineNumbers, setLineNumbers] = useState<string[]>([]);
 
   // Create refs to access DOM elements directly
@@ -461,7 +460,7 @@ const LogViewer = () => {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      <Header showTables={showTables} setShowTables={() => {}} />
+      <Header />
       <main style={{ flex: 1 }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           {/* Breadcrumb navigation */}

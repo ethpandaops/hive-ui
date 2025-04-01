@@ -16,7 +16,6 @@ const TestDetail = () => {
   const { discoveryName, suiteid } = useParams<{ discoveryName: string, suiteid: string }>();
   const [discoveryAddress, setDiscoveryAddress] = useState<string | null>(null);
   const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
-  const [showTables, setShowTables] = useState(true);
   const [relatedTestRuns, setRelatedTestRuns] = useState<TestRun[]>([]);
   const [currentTestName, setCurrentTestName] = useState<string>('');
   const navigate = useNavigate();
@@ -258,7 +257,7 @@ const TestDetail = () => {
 
   return (
     <div style={containerStyle}>
-      <Header showTables={showTables} setShowTables={setShowTables} />
+      <Header />
 
       <div style={{ padding: '0 1.5rem', flex: 1 }}>
         {isLoading ? (

@@ -3,12 +3,9 @@ import { useTheme } from '../contexts/useTheme';
 import { ThemeMode } from '../contexts/themeContext';
 import { Link } from 'react-router-dom';
 
-interface HeaderProps {
-  showTables: boolean;
-  setShowTables: (show: boolean) => void;
-}
 
-const Header: React.FC<HeaderProps> = () => {
+
+const Header: React.FC = () => {
   const { themeMode, isDarkMode, setThemeMode } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
