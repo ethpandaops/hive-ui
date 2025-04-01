@@ -160,79 +160,86 @@ const TestResultsTable = ({
               color: 'var(--text-secondary, #6b7280)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+              width: '30%'
             }}>
               Clients
             </th>
             <th style={{
-              padding: '0.75rem 1rem',
+              padding: '0.5rem',
               textAlign: 'right',
               fontSize: '0.75rem',
               fontWeight: '600',
               color: 'var(--text-secondary, #6b7280)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+              width: '50px'
             }}>
               Total
             </th>
             <th style={{
-              padding: '0.75rem 1rem',
+              padding: '0.5rem',
               textAlign: 'right',
               fontSize: '0.75rem',
               fontWeight: '600',
               color: 'var(--text-secondary, #6b7280)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+              width: '50px'
             }}>
-              Passed
+              Pass
             </th>
             <th style={{
-              padding: '0.75rem 1rem',
+              padding: '0.5rem',
               textAlign: 'right',
               fontSize: '0.75rem',
               fontWeight: '600',
               color: 'var(--text-secondary, #6b7280)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+              width: '50px'
             }}>
-              Failed
+              Fail
             </th>
             <th style={{
-              padding: '0.75rem 1rem',
+              padding: '0.5rem',
               textAlign: 'right',
               fontSize: '0.75rem',
               fontWeight: '600',
               color: 'var(--text-secondary, #6b7280)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+              width: '50px'
             }}>
               Diff
             </th>
             <th style={{
-              padding: '0.75rem 1rem',
+              padding: '0.5rem',
               textAlign: 'right',
               fontSize: '0.75rem',
               fontWeight: '600',
               color: 'var(--text-secondary, #6b7280)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+              width: '80px'
             }}>
               Status
             </th>
             <th style={{
-              padding: '0.75rem 1rem',
+              padding: '0.5rem',
               textAlign: 'right',
               fontSize: '0.75rem',
               fontWeight: '600',
               color: 'var(--text-secondary, #6b7280)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+              width: '70px'
             }}>
               Details
             </th>
@@ -277,58 +284,54 @@ const TestResultsTable = ({
                 <td style={{
                   padding: '0.75rem 1rem',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap',
-                  maxWidth: '250px',
+                  maxWidth: '30%',
                   overflow: 'hidden'
                 }}>
-                  <table style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-secondary, #6b7280)',
-                    borderCollapse: 'collapse',
-                    width: '100%',
-                    maxWidth: '240px'
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem'
                   }}>
-                    <tbody>
-                      {Object.entries(run.versions).map(([client, version]) => (
-                        <tr key={client}>
-                          <td style={{
-                            padding: '0.25rem 0.5rem',
-                            color: 'var(--text-primary, #111827)',
-                            fontWeight: '500',
-                            maxWidth: '80px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>{client}</td>
-                          <td style={{
-                            padding: '0.25rem 0.5rem',
-                            fontFamily: 'monospace',
-                            color: 'var(--text-secondary, #6b7280)',
-                            maxWidth: '160px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}
-                          title={version}
-                          >{version}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                    {Object.entries(run.versions).map(([client, version]) => (
+                      <div key={client} style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        fontSize: '0.75rem'
+                      }}>
+                        <div style={{
+                          fontWeight: '500',
+                          color: 'var(--text-primary, #111827)'
+                        }}>
+                          {client}
+                        </div>
+                        <div style={{
+                          color: 'var(--text-secondary, #6b7280)',
+                          fontSize: '0.7rem',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '80ch'
+                        }}
+                        title={version}>
+                          {version.length > 80 ? version.substring(0, 80) + '...' : version}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </td>
                 <td style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.5rem',
                   fontSize: '0.875rem',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap',
                   textAlign: 'right',
                   color: 'var(--text-primary, #111827)'
                 }}>
                   {run.ntests}
                 </td>
                 <td style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.5rem',
                   fontSize: '0.875rem',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap',
                   textAlign: 'right',
                   color: 'var(--success-text, #047857)',
                   fontWeight: '500'
@@ -336,10 +339,9 @@ const TestResultsTable = ({
                   {run.passes}
                 </td>
                 <td style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.5rem',
                   fontSize: '0.875rem',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap',
                   textAlign: 'right',
                   color: run.fails > 0 ? 'var(--error-text, #b91c1c)' : 'var(--text-secondary, #6b7280)',
                   fontWeight: run.fails > 0 ? '500' : 'normal'
@@ -347,9 +349,8 @@ const TestResultsTable = ({
                   {run.fails}
                 </td>
                 <td style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.5rem',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap',
                   textAlign: 'right'
                 }}>
                   {diff ? (
@@ -390,30 +391,32 @@ const TestResultsTable = ({
                   )}
                 </td>
                 <td style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.5rem',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap',
                   textAlign: 'right'
                 }}>
                   <div style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    padding: '0.25rem 0.5rem',
+                    justifyContent: 'center',
+                    padding: '0.25rem 0.35rem',
                     borderRadius: '9999px',
-                    fontSize: '0.75rem',
+                    fontSize: '0.7rem',
                     fontWeight: '500',
                     backgroundColor: statusStyles.bg,
                     color: statusStyles.text,
-                    border: `1px solid ${statusStyles.border}20`
+                    border: `1px solid ${statusStyles.border}20`,
+                    width: '60px',
+                    minWidth: '60px',
+                    textAlign: 'center'
                   }}>
-                    <span style={{ marginRight: '0.25rem' }}>{statusStyles.icon}</span>
+                    <span style={{ marginRight: '0.15rem' }}>{statusStyles.icon}</span>
                     {statusStyles.label}
                   </div>
                 </td>
                 <td style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.5rem',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap',
                   textAlign: 'right'
                 }}>
                   <Link
@@ -421,9 +424,9 @@ const TestResultsTable = ({
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      padding: '0.25rem 0.5rem',
+                      padding: '0.25rem 0.35rem',
                       borderRadius: '0.375rem',
-                      fontSize: '0.75rem',
+                      fontSize: '0.7rem',
                       fontWeight: '500',
                       backgroundColor: 'var(--badge-bg, #f3f4f6)',
                       color: 'var(--text-secondary, #4b5563)',
@@ -443,7 +446,7 @@ const TestResultsTable = ({
                     }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                         style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem' }}>
+                         style={{ width: '0.8rem', height: '0.8rem', marginRight: '0.3rem' }}>
                       <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 0 0 2 4.25v11.5A2.25 2.25 0 0 0 4.25 18h11.5A2.25 2.25 0 0 0 18 15.75V4.25A2.25 2.25 0 0 0 15.75 2H4.25ZM4 13.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75ZM4.75 6.5a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5ZM4 9.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 4 9.5Z" clipRule="evenodd" />
                     </svg>
                     Details
