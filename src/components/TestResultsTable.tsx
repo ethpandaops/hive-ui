@@ -376,7 +376,7 @@ const TestResultsTable = ({
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   whiteSpace: 'nowrap'
                 }}>
-                  {run.name.split('/').slice(1).join('/')}
+                  {run.name}
                 </td>
                 <td style={{
                   padding: '0.75rem 1rem',
@@ -389,7 +389,7 @@ const TestResultsTable = ({
                     flexDirection: 'column',
                     gap: '0.5rem'
                   }}>
-                    {Object.entries(run.versions).map(([client, version]) => (
+                    {run.versions && Object.entries(run.versions).map(([client, version]) => (
                       <div key={client} style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -411,6 +411,21 @@ const TestResultsTable = ({
                         }}
                         title={version}>
                           {version.length > 80 ? version.substring(0, 80) + '...' : version}
+                        </div>
+                      </div>
+                    ))}
+
+                    {!run.versions && run.clients && run.clients.map((client) => (
+                      <div key={client} style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        fontSize: '0.75rem'
+                      }}>
+                        <div style={{
+                          fontWeight: '500',
+                          color: 'var(--text-primary, #111827)'
+                        }}>
+                          {client}
                         </div>
                       </div>
                     ))}
