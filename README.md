@@ -12,18 +12,12 @@ An example of the UI can be found at the ethPandaops hive address: [https://hive
 
 Hive UI provides a user-friendly interface for viewing and analyzing test results from the Ethereum Hive testing framework. It allows users to browse test runs, filter results, and view detailed information about test performance across different Ethereum clients.
 
-***Note:*** This project is still under development and not all features are available. You should still use [hiveview](https://github.com/ethereum/hive/tree/master/cmd/hiveview) for now.
-
-Missing features:
-- Test details page
-- Log details page
-- Test run comparison
-- Better filtering and sorting
-
 ## Features
 
-- 🔍 Browse and filter test runs across multiple result directories
-- 📊 Visualize test results and status
+- Browse and filter test runs from multiple hive result directories
+- Visualize test results and status
+- Compare test runs
+- View test run logs
 
 ## Getting Started
 
