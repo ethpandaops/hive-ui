@@ -379,8 +379,8 @@ const TestDetail = () => {
                         // Calculate font size based on box size
                         const fontSize =
                           totalRuns <= 10 ? '10px' :
-                          totalRuns <= 20 ? '9px' :
-                          totalRuns <= 30 ? '8px' :
+                          totalRuns <= 20 ? '8px' :
+                          totalRuns <= 30 ? '7px' :
                           '0'; // Hide text for very small boxes
 
                         return (
@@ -391,7 +391,7 @@ const TestDetail = () => {
                               height: boxSize,
                               backgroundColor: bgColor,
                               color: textColor,
-                              borderRadius: '3px',
+                              borderRadius: '4px',
                               cursor: 'pointer',
                               opacity: boxOpacity,
                               border: isCurrentRun ? `${borderWidth}px solid ${borderColor}` : 'none',
@@ -422,7 +422,7 @@ const TestDetail = () => {
                             }}
                             title={`${format(new Date(run.start), 'MMM d, HH:mm')} - ${run.passes}/${run.ntests} passed (${formattedPassRate}%)`}
                           >
-                            {passRate == 100 ? `✓` : `${passRate}`}
+                            {passRate == 100 ? `✓` : `${passRate}%`}
                           </div>
                         );
                       })}
