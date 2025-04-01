@@ -8,7 +8,7 @@ interface HeaderProps {
   setShowTables: (show: boolean) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
+const Header: React.FC<HeaderProps> = () => {
   const { themeMode, isDarkMode, setThemeMode } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -146,8 +146,8 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              padding: '0.5rem 0.75rem',
-              fontSize: '0.875rem',
+              justifyContent: 'center',
+              padding: '0.5rem',
               color: isDarkMode ? '#94a3b8' : '#64748b',
               backgroundColor: isDarkMode ? '#1e293b' : 'white',
               borderRadius: '0.5rem',
@@ -160,10 +160,9 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? '#1e293b' : 'white'}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                 style={{ width: '1.25rem', height: '1.25rem', marginRight: '0.5rem' }}>
+                 style={{ width: '1.25rem', height: '1.25rem' }}>
               <path fillRule="evenodd" d="M7.84 1.804A1 1 0 018.82 1h2.36a1 1 0 01.98.804l.331 1.652a6.993 6.993 0 011.929 1.115l1.598-.54a1 1 0 011.186.447l1.18 2.044a1 1 0 01-.205 1.251l-1.267 1.113a7.047 7.047 0 010 2.228l1.267 1.113a1 1 0 01.206 1.25l-1.18 2.045a1 1 0 01-1.187.447l-1.598-.54a6.993 6.993 0 01-1.929 1.115l-.33 1.652a1 1 0 01-.98.804H8.82a1 1 0 01-.98-.804l-.331-1.652a6.993 6.993 0 01-1.929-1.115l-1.598.54a1 1 0 01-1.186-.447l-1.18-2.044a1 1 0 01.205-1.251l1.267-1.114a7.05 7.05 0 010-2.227L1.821 7.773a1 1 0 01-.206-1.25l1.18-2.045a1 1 0 011.187-.447l1.598.54A6.993 6.993 0 017.51 3.455l.33-1.652zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
             </svg>
-            Settings
           </button>
 
           {isSettingsOpen && (
@@ -204,49 +203,6 @@ const Header: React.FC<HeaderProps> = ({ showTables, setShowTables }) => {
                 }}>
                   Display Settings
                 </h3>
-              </div>
-
-              {/* Show Tables Toggle */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.5rem 0',
-                borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.4)' : 'rgba(226, 232, 240, 0.8)'}`,
-                marginBottom: '0.5rem'
-              }}>
-                <span style={{
-                  fontSize: '0.875rem',
-                  color: isDarkMode ? '#f8fafc' : '#0f172a'
-                }}>
-                  Show tables
-                </span>
-                <div
-                  onClick={() => setShowTables(!showTables)}
-                  style={{
-                    position: 'relative',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    width: '2.5rem',
-                    height: '1.5rem',
-                    backgroundColor: showTables
-                      ? '#22c55e'
-                      : (isDarkMode ? '#475569' : '#94a3b8'),
-                    borderRadius: '9999px',
-                    transition: 'background-color 0.2s ease'
-                  }}
-                >
-                  <span style={{
-                    position: 'absolute',
-                    left: showTables ? 'calc(100% - 1.25rem)' : '0.125rem',
-                    transition: 'left 0.2s ease',
-                    width: '1.125rem',
-                    height: '1.125rem',
-                    backgroundColor: 'white',
-                    borderRadius: '50%'
-                  }}></span>
-                </div>
               </div>
 
               {/* Theme Selection */}

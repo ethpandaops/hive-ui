@@ -11,11 +11,8 @@ import { useSearchParams } from 'react-router-dom';
 type GroupBy = 'test' | 'client';
 type SortBy = 'name' | 'coverage' | 'time';
 
-interface TestResultsProps {
-  showTables: boolean;
-}
 
-const TestResults = ({ showTables }: TestResultsProps) => {
+const TestResults = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [expandedGroup, setExpandedGroup] = useState<string | null>(searchParams.get('group'));
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
@@ -525,7 +522,7 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                 {/* Summary Section */}
                 <div style={{
                   padding: '1rem 1.5rem',
-                  borderBottom: showTables ? '1px solid var(--border-color, rgba(229, 231, 235, 0.8))' : 'none',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   backgroundColor: isInactive
                     ? 'var(--summary-bg, rgba(254, 252, 232, 0.5))'
                     : 'var(--summary-bg, rgba(249, 250, 251, 0.5))'
@@ -718,17 +715,15 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                 </div>
 
                 {/* Table Section */}
-                {showTables && (
-                  <TestResultsTable
-                    runs={runs}
-                    directory={directory}
-                    directoryAddress={directoryAddresses[directory]}
-                    testNameFilter={testNameFilter}
-                    clientFilter={clientFilter}
-                    setTestNameFilter={setTestNameFilter}
-                    setClientFilter={setClientFilter}
-                  />
-                )}
+                <TestResultsTable
+                  runs={runs}
+                  directory={directory}
+                  directoryAddress={directoryAddresses[directory]}
+                  testNameFilter={testNameFilter}
+                  clientFilter={clientFilter}
+                  setTestNameFilter={setTestNameFilter}
+                  setClientFilter={setClientFilter}
+                />
               </>
             )}
           </div>
