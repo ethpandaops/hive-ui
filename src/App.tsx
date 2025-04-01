@@ -39,7 +39,8 @@ const router = createHashRouter([
     path: '/test/:discoveryName/:suiteid',
     lazy: async () => {
       try {
-        const module = await import('./components/TestDetail');
+        // Use type assertion to handle dynamic import
+        const module = await import('./components/TestDetail') as any;
         return { Component: module.default };
       } catch (error) {
         console.error('Failed to load TestDetail component:', error);
@@ -50,10 +51,26 @@ const router = createHashRouter([
     }
   },
   {
+    path: '/compare/:discoveryName',
+    lazy: async () => {
+      try {
+        // Use type assertion to handle dynamic import
+        const module = await import('./components/TestComparison') as any;
+        return { Component: module.default };
+      } catch (error) {
+        console.error('Failed to load TestComparison component:', error);
+        return {
+          Component: () => <div>Test Comparison Loading Error</div>
+        };
+      }
+    }
+  },
+  {
     path: '/logs/:group/:suiteId/:logFile',
     lazy: async () => {
       try {
-        const module = await import('./components/LogViewer');
+        // Use type assertion to handle dynamic import
+        const module = await import('./components/LogViewer') as any;
         return { Component: module.default };
       } catch (error) {
         console.error('Failed to load LogViewer component:', error);

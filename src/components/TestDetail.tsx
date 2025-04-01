@@ -430,6 +430,40 @@ const TestDetail = () => {
                   </div>
                 )}
 
+                {/* Compare Button */}
+                <button
+                  onClick={() => {
+                    // Get at most 4 related runs including the current one
+                    const runsToCompare = [
+                      suiteid, // Current run
+                      ...relatedTestRuns
+                        .filter(run => run.fileName !== fileName) // Skip current run
+                        .slice(0, 9) // Take max 9 additional runs
+                        .map(run => run.fileName.replace('.json', ''))
+                    ];
+                    navigate(`/compare/${discoveryName}?runs=${runsToCompare.join(',')}`);
+                  }}
+                  style={{
+                    backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
+                    color: '#6366f1',
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '0.375rem',
+                    border: `1px solid ${isDarkMode ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)'}`,
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    marginRight: '0.75rem'
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '0.875rem', height: '0.875rem' }}>
+                    <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                  </svg>
+                  Compare Runs
+                </button>
+
                 {/* Runs Dropdown */}
                 {isTestRunsLoading ? (
                   <div style={{

@@ -30,7 +30,7 @@ export const fetchTestRuns = async (directory: Directory): Promise<TestRun[]> =>
 };
 
 export const fetchTestDetail = async (discoveryAddr: string, fileName: string): Promise<TestDetail> => {
-  const response = await fetch(`${discoveryAddr}/results/${fileName}?ts=${getTimestamp()}`);
+  const response = await fetch(`${discoveryAddr}/results/${fileName}`);
   if (!response.ok) {
     throw new Error('Failed to fetch test details');
   }
