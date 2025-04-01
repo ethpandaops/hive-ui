@@ -2,6 +2,8 @@ import { format, isValid } from 'date-fns';
 import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { fetchTestRuns } from '../services/api';
 
 type GroupBy = 'test' | 'client';
 
@@ -13,7 +15,7 @@ interface TestResultCardProps {
   index: number;
 }
 
-const TestResultCard = ({ run, groupBy, directory }: TestResultCardProps) => {
+const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResultCardProps) => {
   const statusStyles = getStatusStyles(run);
   const displayName = groupBy === 'test'
     ? run.clients.join(', ')  // When grouped by test, show clients
@@ -21,6 +23,16 @@ const TestResultCard = ({ run, groupBy, directory }: TestResultCardProps) => {
 
   // Remove .json extension for the URL
   const suiteid = run.fileName.replace(/\.json$/, '');
+
+  // Fetch all test runs for the current directory
+  const { data: allTestRuns } = useQuery({
+    queryKey: ['testRuns', directoryAddress],
+    queryFn: () => fetchTestRuns({ name: directory, address: directoryAddress }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Get past 8 runs for this test/client combination
+  const pastRuns = getPastRuns(allTestRuns || [], run, 10);
 
   return (
     <Link
@@ -94,6 +106,156 @@ const TestResultCard = ({ run, groupBy, directory }: TestResultCardProps) => {
           </div>
         </div>
 
+        {/* Past runs visualization */}
+        {pastRuns.length > 1 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            margin: '0.25rem 0',
+            height: '20px',
+            backgroundColor: 'var(--badge-bg, #f3f4f6)',
+            borderRadius: '0.25rem',
+            padding: '0.35rem 0.5rem',
+            overflow: 'hidden'
+          }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                fontSize: '0.6rem',
+                color: 'var(--text-secondary, #6b7280)',
+                marginRight: '0.2rem',
+                textAlign: 'center',
+                width: '16px'
+              }}
+            >
+              <span title="Current run">Now</span>
+            </div>
+            {pastRuns.map((pastRun, index) => {
+              const isCurrentRun = index === 0;
+              const prevRun = index < pastRuns.length - 1 ? pastRuns[index + 1] : null;
+              const passRatio = pastRun.passes / pastRun.ntests;
+              const prevPassRatio = prevRun ? prevRun.passes / prevRun.ntests : -1;
+
+              // Determine trend arrow
+              let trendIndicator = '';
+              let trendColor = 'transparent';
+
+              if (prevRun && !isCurrentRun) {
+                // Only show arrows when there's a meaningful change (>1% difference)
+                const percentDiff = Math.abs(passRatio - prevPassRatio) * 100;
+
+                if (percentDiff >= 1) {
+                  if (passRatio > prevPassRatio) {
+                    trendIndicator = '↑';
+                    trendColor = 'var(--success-text, #047857)';
+                  } else if (passRatio < prevPassRatio) {
+                    trendIndicator = '↓';
+                    trendColor = 'var(--error-text, #b91c1c)';
+                  }
+                  // No arrow shown if exactly equal or minimal difference
+                }
+              }
+
+              let barColor;
+              let barGradient;
+              if (pastRun.fails === 0) {
+                barColor = 'var(--success-border, #10b981)';
+                barGradient = 'linear-gradient(180deg, #34d399 0%, #10b981 100%)';
+              } else if (passRatio > 0.5) {
+                barColor = 'var(--warning-border, #f59e0b)';
+                barGradient = 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%)';
+              } else {
+                barColor = 'var(--error-border, #ef4444)';
+                barGradient = 'linear-gradient(180deg, #f87171 0%, #ef4444 100%)';
+              }
+
+              return (
+                <div
+                  key={`${pastRun.fileName}-${index}`}
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    height: '100%',
+                    width: '14px',
+                    opacity: isCurrentRun ? 1 : 0.85,
+                    backgroundColor: 'rgba(229, 231, 235, 0.3)',
+                    borderRadius: '3px',
+                    boxShadow: 'inset 0 0 0 1px rgba(0, 0, 0, 0.05)',
+                    overflow: 'hidden',
+                    border: isCurrentRun ? '1px solid rgba(107, 114, 128, 0.3)' : 'none',
+                    padding: 0
+                  }}
+                  title={`Run ${pastRuns.length - index}: ${pastRun.passes}/${pastRun.ntests} passed (${Math.round(passRatio * 100)}%)`}
+                >
+                  {trendIndicator && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '-3px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      fontSize: '0.7rem',
+                      fontWeight: '700',
+                      color: trendColor,
+                      lineHeight: 1,
+                      textShadow: '0 0 1px var(--card-bg, white)',
+                      zIndex: 2
+                    }}>
+                      {trendIndicator}
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      width: '100%',
+                      height: `${Math.max(passRatio * 100, 5)}%`,
+                      background: barGradient,
+                      borderTopLeftRadius: '2px',
+                      borderTopRightRadius: '2px',
+                      boxShadow: `0 -1px 2px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)`,
+                      border: `1px solid ${barColor}`,
+                      borderBottom: 'none'
+                    }}
+                  />
+                  {/* Small highlight at top of bar for 3D effect */}
+                  {passRatio > 0.1 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: `calc(${Math.max(passRatio * 100, 5)}% - 2px)`,
+                        width: '80%',
+                        height: '1px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                        borderRadius: '1px'
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                fontSize: '0.6rem',
+                color: 'var(--text-secondary, #6b7280)',
+                marginLeft: '0.2rem',
+                textAlign: 'center',
+                width: '16px'
+              }}
+            >
+              <span title="Past runs">Past</span>
+            </div>
+          </div>
+        )}
+
         {/* Test stats */}
         <div style={{
           display: 'flex',
@@ -159,6 +321,30 @@ const TestResultCard = ({ run, groupBy, directory }: TestResultCardProps) => {
 const formatDate = (timestamp: string) => {
   const date = new Date(timestamp);
   return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
+};
+
+// Helper function to get past runs for a specific test/client combination
+const getPastRuns = (runs: TestRun[], currentRun: TestRun, count: number): TestRun[] => {
+  if (!runs || runs.length === 0) return [currentRun];
+
+  // Get the current test identity
+  const testName = currentRun.name.split('+')[0]; // Get base test name
+  const clientKey = currentRun.clients.sort().join(',');
+
+  // Filter runs for the same test and client combination
+  const filteredRuns = runs.filter(run => {
+    const runTestName = run.name.split('+')[0];
+    const runClientKey = run.clients.sort().join(',');
+    return runTestName === testName && runClientKey === clientKey;
+  });
+
+  // Sort by date (newest first)
+  const sortedRuns = filteredRuns.sort((a, b) =>
+    new Date(b.start).getTime() - new Date(a.start).getTime()
+  );
+
+  // Return at most 'count' entries
+  return sortedRuns.slice(0, count);
 };
 
 export default TestResultCard;
