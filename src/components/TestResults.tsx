@@ -155,7 +155,7 @@ const TestResults = () => {
 
       // First, organize runs by test name
       runs.forEach(run => {
-        const testName = run.name.split('/').slice(1).join('/');
+        const testName = run.name;
         if (!testGroups[testName]) {
           testGroups[testName] = [];
         }
