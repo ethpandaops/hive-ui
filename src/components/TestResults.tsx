@@ -204,7 +204,7 @@ const TestResults = () => {
 
         // Find the most recent run for each unique test
         clientRuns.forEach(run => {
-          const testName = run.name.split('/').slice(1).join('/');
+          const testName = run.name;
 
           if (!latestByTest[testName] ||
               new Date(run.start) > new Date(latestByTest[testName].start)) {

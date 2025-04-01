@@ -30,7 +30,7 @@ const TestResultsTable = ({
 
   // Apply filters to the test runs
   const filteredRuns = runs.filter(run => {
-    const testName = run.name.split('/').slice(1).join('/');
+    const testName = run.name;
     const matchesTestName = testNameFilter === '' ||
       testName.toLowerCase().includes(testNameFilter.toLowerCase());
 
@@ -47,13 +47,13 @@ const TestResultsTable = ({
   // Helper function to find the previous run for a current run
   const findPreviousRun = (currentRun: TestRun): TestRun | null => {
     // Get the current test identity
-    const testName = currentRun.name.split('/').slice(1).join('/'); // Format test name consistently
+    const testName = currentRun.name;
     const clientKey = currentRun.clients.sort().join(',');
     const currentRunTime = new Date(currentRun.start).getTime();
 
     // Find the previous run with the same test name and client combination
     const previousRun = sortedRuns.find(run => {
-      const runTestName = run.name.split('/').slice(1).join('/');
+      const runTestName = run.name;
       const runClientKey = run.clients.sort().join(',');
       const runTime = new Date(run.start).getTime();
 
@@ -111,8 +111,8 @@ const TestResultsTable = ({
           break;
         case 'name':
           {
-            const nameA = a.name.split('/').slice(1).join('/').toLowerCase();
-            const nameB = b.name.split('/').slice(1).join('/').toLowerCase();
+            const nameA = a.name.toLowerCase();
+            const nameB = b.name.toLowerCase();
             comparison = nameA.localeCompare(nameB);
           }
           break;
