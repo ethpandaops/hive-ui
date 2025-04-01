@@ -4,6 +4,8 @@ import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTestRuns } from '../services/api';
+import { useState } from 'react';
+import * as Popover from '@radix-ui/react-popover';
 
 type GroupBy = 'test' | 'client';
 
@@ -17,6 +19,7 @@ interface TestResultCardProps {
 
 const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResultCardProps) => {
   const statusStyles = getStatusStyles(run);
+  const [openPopover, setOpenPopover] = useState<number | null>(null);
   const displayName = groupBy === 'test'
     ? run.clients.join(', ')  // When grouped by test, show clients
     : run.name.split('/').slice(1).join('/'); // When grouped by client, show test name
@@ -31,8 +34,8 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Get past 8 runs for this test/client combination
-  const pastRuns = getPastRuns(allTestRuns || [], run, 10);
+  // Get past 10 runs for this test/client combination
+  const pastRuns = getPastRuns(allTestRuns || [], run, 13);
 
   return (
     <Link
@@ -59,6 +62,8 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
       onMouseOut={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
         e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
+        // Close popover when mouse leaves the card
+        setOpenPopover(null);
       }}
     >
       {/* Status strip */}
@@ -117,22 +122,9 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
             backgroundColor: 'var(--badge-bg, #f3f4f6)',
             borderRadius: '0.25rem',
             padding: '0.35rem 0.5rem',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            position: 'relative'
           }}>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                fontSize: '0.6rem',
-                color: 'var(--text-secondary, #6b7280)',
-                marginRight: '0.2rem',
-                textAlign: 'center',
-                width: '16px'
-              }}
-            >
-              <span title="Current run">Now</span>
-            </div>
             {pastRuns.map((pastRun, index) => {
               const isCurrentRun = index === 0;
               const prevRun = index < pastRuns.length - 1 ? pastRuns[index + 1] : null;
@@ -173,86 +165,153 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
               }
 
               return (
-                <div
-                  key={`${pastRun.fileName}-${index}`}
-                  style={{
-                    position: 'relative',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    height: '100%',
-                    width: '14px',
-                    opacity: isCurrentRun ? 1 : 0.85,
-                    backgroundColor: 'rgba(229, 231, 235, 0.3)',
-                    borderRadius: '3px',
-                    boxShadow: 'inset 0 0 0 1px rgba(0, 0, 0, 0.05)',
-                    overflow: 'hidden',
-                    border: isCurrentRun ? '1px solid rgba(107, 114, 128, 0.3)' : 'none',
-                    padding: 0
-                  }}
-                  title={`Run ${pastRuns.length - index}: ${pastRun.passes}/${pastRun.ntests} passed (${Math.round(passRatio * 100)}%)`}
-                >
-                  {trendIndicator && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '-3px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      fontSize: '0.7rem',
-                      fontWeight: '700',
-                      color: trendColor,
-                      lineHeight: 1,
-                      textShadow: '0 0 1px var(--card-bg, white)',
-                      zIndex: 2
-                    }}>
-                      {trendIndicator}
-                    </div>
-                  )}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      width: '100%',
-                      height: `${Math.max(passRatio * 100, 5)}%`,
-                      background: barGradient,
-                      borderTopLeftRadius: '2px',
-                      borderTopRightRadius: '2px',
-                      boxShadow: `0 -1px 2px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)`,
-                      border: `1px solid ${barColor}`,
-                      borderBottom: 'none'
-                    }}
-                  />
-                  {/* Small highlight at top of bar for 3D effect */}
-                  {passRatio > 0.1 && (
+                <Popover.Root key={`${pastRun.fileName}-${index}`} open={openPopover === index} onOpenChange={(open) => setOpenPopover(open ? index : null)}>
+                  <Popover.Trigger asChild>
                     <div
                       style={{
-                        position: 'absolute',
-                        bottom: `calc(${Math.max(passRatio * 100, 5)}% - 2px)`,
-                        width: '80%',
-                        height: '1px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                        borderRadius: '1px'
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        height: '100%',
+                        width: '14px',
+                        opacity: isCurrentRun ? 1 : 0.65,
+                        backgroundColor: 'rgba(229, 231, 235, 0.3)',
+                        borderRadius: '3px',
+                        boxShadow: 'inset 0 0 0 1px rgba(0, 0, 0, 0.05)',
+                        overflow: 'hidden',
+                        padding: 0,
+                        cursor: 'pointer'
                       }}
-                    />
-                  )}
-                </div>
+                      onClick={(e) => {
+                        // This prevents the click from navigating
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onMouseEnter={(e) => {
+                        e.stopPropagation();
+                        setOpenPopover(index);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.stopPropagation();
+                        // Only clear if this is the current open popover
+                        if (openPopover === index) {
+                          setOpenPopover(null);
+                        }
+                      }}
+                    >
+                      {trendIndicator && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '-3px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          fontSize: '0.7rem',
+                          fontWeight: '700',
+                          color: trendColor,
+                          lineHeight: 1,
+                          textShadow: '0 0 1px var(--card-bg, white)',
+                          zIndex: 2
+                        }}>
+                          {trendIndicator}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          width: '100%',
+                          height: `${Math.max(passRatio * 100, 5)}%`,
+                          background: barGradient,
+                          borderTopLeftRadius: '2px',
+                          borderTopRightRadius: '2px',
+                          boxShadow: `0 -1px 2px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)`,
+                          border: `1px solid ${barColor}`,
+                          borderBottom: 'none'
+                        }}
+                      />
+                      {/* Small highlight at top of bar for 3D effect */}
+                      {passRatio > 0.1 && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: `calc(${Math.max(passRatio * 100, 5)}% - 2px)`,
+                            width: '80%',
+                            height: '1px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                            borderRadius: '1px'
+                          }}
+                        />
+                      )}
+                    </div>
+                  </Popover.Trigger>
+
+                  <Popover.Portal>
+                    <Popover.Content
+                      side="top"
+                      align={index === 0 ? "start" : index === pastRuns.length - 1 ? "end" : "center"}
+                      sideOffset={5}
+                      alignOffset={index === 0 ? 5 : index === pastRuns.length - 1 ? -5 : 0}
+                      style={{
+                        backgroundColor: 'var(--card-bg, #ffffff)',
+                        border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                        borderRadius: '6px',
+                        padding: '0.75rem',
+                        boxShadow: '0 6px 16px -2px rgba(0, 0, 0, 0.15), 0 4px 8px -2px rgba(0, 0, 0, 0.1)',
+                        zIndex: 100,
+                        minWidth: '200px',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-primary, #111827)',
+                        maxWidth: '250px'
+                      }}
+                      onInteractOutside={(e: Event) => {
+                        // Prevent closing when clicking on the card elements
+                        if (e.target instanceof Element) {
+                          const card = e.target.closest('a');
+                          if (card && card.tagName === 'A') {
+                            e.preventDefault();
+                          }
+                        }
+                      }}
+                      onMouseEnter={(e) => {
+                        e.stopPropagation();
+                        // Keep this popover open while hovering over content
+                        setOpenPopover(index);
+                      }}
+                    >
+                      <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
+                        {format(new Date(pastRun.start), 'MMM d, yyyy HH:mm:ss')}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--success-text, #047857)' }}>Passed:</span>
+                          <span style={{ fontWeight: '500' }}>{pastRun.passes}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--error-text, #b91c1c)' }}>Failed:</span>
+                          <span style={{ fontWeight: '500' }}>{pastRun.fails}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-color, rgba(229, 231, 235, 0.4))', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                          <span>Success rate:</span>
+                          <span style={{ fontWeight: '600' }}>
+                            {((pastRun.passes / pastRun.ntests) * 100).toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                      <Popover.Arrow
+                        style={{
+                          fill: 'var(--card-bg, #ffffff)',
+                          filter: 'drop-shadow(0 -1px 1px rgba(0, 0, 0, 0.05))',
+                          stroke: 'var(--border-color, rgba(229, 231, 235, 0.8))',
+                          strokeWidth: '1px'
+                        }}
+                      />
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
               );
             })}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                fontSize: '0.6rem',
-                color: 'var(--text-secondary, #6b7280)',
-                marginLeft: '0.2rem',
-                textAlign: 'center',
-                width: '16px'
-              }}
-            >
-              <span title="Past runs">Past</span>
-            </div>
           </div>
         )}
 
