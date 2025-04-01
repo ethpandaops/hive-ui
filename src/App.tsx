@@ -1,14 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createHashRouter, RouterProvider } from 'react-router-dom';
 import TestResults from './components/TestResults';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ThemeProvider from './contexts/theme-provider';
-import { useState } from 'react';
+import React from 'react';
+import NotFound from './components/NotFound';
 
 const queryClient = new QueryClient();
 
 function MainApp() {
-  const [showTables, setShowTables] = useState(true);
 
   return (
     <div style={{
@@ -18,20 +19,77 @@ function MainApp() {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      <Header showTables={showTables} setShowTables={setShowTables} />
+      <Header />
       <main style={{ flex: 1 }}>
-        <TestResults showTables={showTables} />
+        <TestResults />
       </main>
       <Footer />
     </div>
   );
 }
 
+// Create router with routes
+const router = createHashRouter([
+  {
+    path: '/',
+    element: <MainApp />
+  },
+  {
+    path: '/test/:discoveryName/:suiteid',
+    lazy: async () => {
+      try {
+        // Use unknown type instead of any
+        const module = await import('./components/TestDetail') as unknown as { default: React.ComponentType<unknown> };
+        return { Component: module.default };
+      } catch (error) {
+        console.error('Failed to load TestDetail component:', error);
+        return {
+          Component: () => <div>Test Details Loading Error</div>
+        };
+      }
+    }
+  },
+  {
+    path: '/compare/:discoveryName',
+    lazy: async () => {
+      try {
+        // Use unknown type instead of any
+        const module = await import('./components/TestComparison') as unknown as { default: React.ComponentType<unknown> };
+        return { Component: module.default };
+      } catch (error) {
+        console.error('Failed to load TestComparison component:', error);
+        return {
+          Component: () => <div>Test Comparison Loading Error</div>
+        };
+      }
+    }
+  },
+  {
+    path: '/logs/:group/:suiteId/:logFile',
+    lazy: async () => {
+      try {
+        // Use unknown type instead of any
+        const module = await import('./components/LogViewer') as unknown as { default: React.ComponentType<unknown> };
+        return { Component: module.default };
+      } catch (error) {
+        console.error('Failed to load LogViewer component:', error);
+        return {
+          Component: () => <div>Log Viewer Loading Error</div>
+        };
+      }
+    }
+  },
+  {
+    path: '*',
+    element: <NotFound />
+  }
+]);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <MainApp />
+        <RouterProvider router={router} />
       </ThemeProvider>
     </QueryClientProvider>
   );

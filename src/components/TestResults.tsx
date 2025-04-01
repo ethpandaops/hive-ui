@@ -6,17 +6,18 @@ import { useState, useEffect } from 'react';
 import * as jdenticon from 'jdenticon';
 import TestResultGroup from './TestResultGroup';
 import TestResultsTable from './TestResultsTable';
+import { useSearchParams } from 'react-router-dom';
 
 type GroupBy = 'test' | 'client';
+type SortBy = 'name' | 'coverage' | 'time';
 
-interface TestResultsProps {
-  showTables: boolean;
-}
 
-const TestResults = ({ showTables }: TestResultsProps) => {
-  const [collapsedDirectories, setCollapsedDirectories] = useState<Record<string, boolean>>({});
+const TestResults = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(searchParams.get('group'));
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
   const [groupBy, setGroupBy] = useState<GroupBy>('test');
+  const [sortBy, setSortBy] = useState<SortBy>('name');
   const [testNameFilter, setTestNameFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
@@ -26,16 +27,13 @@ const TestResults = ({ showTables }: TestResultsProps) => {
     queryFn: fetchDirectories,
   });
 
-  // Set all directories as collapsed by default and store directory addresses
+  // Store directory addresses
   useEffect(() => {
     if (directories) {
-      const collapsed: Record<string, boolean> = {};
       const addresses: Record<string, string> = {};
       directories.forEach(dir => {
-        collapsed[dir.name] = true;
         addresses[dir.name] = dir.address;
       });
-      setCollapsedDirectories(collapsed);
       setDirectoryAddresses(addresses);
     }
   }, [directories]);
@@ -63,6 +61,17 @@ const TestResults = ({ showTables }: TestResultsProps) => {
     },
     enabled: !!directories,
   });
+
+  // Check if the expanded group from URL exists in the data
+  useEffect(() => {
+    if (testRunsByDir && expandedGroup) {
+      if (!testRunsByDir[expandedGroup]) {
+        // If the group from URL doesn't exist, clear it
+        setExpandedGroup(null);
+        setSearchParams({});
+      }
+    }
+  }, [testRunsByDir, expandedGroup, setSearchParams]);
 
   if (isLoadingDirs || isLoadingRuns) {
     return (
@@ -103,13 +112,42 @@ const TestResults = ({ showTables }: TestResultsProps) => {
   };
 
   const toggleDirectory = (directory: string) => {
-    setCollapsedDirectories(prev => ({
-      ...prev,
-      [directory]: !prev[directory]
-    }));
+    if (expandedGroup === directory) {
+      // If clicked on already expanded group, collapse it
+      setExpandedGroup(null);
+      setSearchParams({});
+    } else {
+      // Otherwise expand the clicked group and collapse others
+      setExpandedGroup(directory);
+      setSearchParams({ group: directory });
+    }
   };
 
-  // Get the latest runs by test name or by client depending on grouping preference
+  // Sort test runs based on the selected criteria
+  const sortTestRuns = (runs: TestRun[]): TestRun[] => {
+    return [...runs].sort((a, b) => {
+      if (sortBy === 'name') {
+        if (groupBy === 'test') {
+          // Sort by client name when grouped by test
+          return a.clients.join(',').localeCompare(b.clients.join(','));
+        } else {
+          // Sort by test name when grouped by client
+          return a.name.localeCompare(b.name);
+        }
+      } else if (sortBy === 'coverage') {
+        // Sort by pass ratio (descending)
+        const passRatioA = a.passes / a.ntests;
+        const passRatioB = b.passes / b.ntests;
+        return passRatioB - passRatioA;
+      } else if (sortBy === 'time') {
+        // Sort by start time (newest first)
+        return new Date(b.start).getTime() - new Date(a.start).getTime();
+      }
+      return 0;
+    });
+  };
+
+  // Update getGroupedRuns to include sorting
   const getGroupedRuns = (runs: TestRun[], groupBy: GroupBy) => {
     if (groupBy === 'test') {
       // Group by test name, showing only the most recent run for each client combination
@@ -140,8 +178,8 @@ const TestResults = ({ showTables }: TestResultsProps) => {
           }
         });
 
-        // Add the filtered runs to the result
-        filteredGroups[testName] = Object.values(latestByClient);
+        // Add the filtered and sorted runs to the result
+        filteredGroups[testName] = sortTestRuns(Object.values(latestByClient));
       });
 
       return filteredGroups;
@@ -174,8 +212,8 @@ const TestResults = ({ showTables }: TestResultsProps) => {
           }
         });
 
-        // Add the filtered runs to the result
-        filteredGroups[clientKey] = Object.values(latestByTest);
+        // Add the filtered and sorted runs to the result
+        filteredGroups[clientKey] = sortTestRuns(Object.values(latestByTest));
       });
 
       return filteredGroups;
@@ -185,7 +223,6 @@ const TestResults = ({ showTables }: TestResultsProps) => {
   return (
     <div className="space-y-8" style={{
       margin: '1.5rem',
-      minHeight: 'calc(100vh - 100px)',
       backgroundColor: 'var(--bg-color)',
       color: 'var(--text-primary)'
     }}>
@@ -210,7 +247,7 @@ const TestResults = ({ showTables }: TestResultsProps) => {
         return dirA.localeCompare(dirB);
       }).map(([directory, runs]) => {
         const mostRecentRun = getMostRecentRun(runs);
-        const isCollapsed = !!collapsedDirectories[directory];
+        const isCollapsed = directory !== expandedGroup;
         const recentRuns = getRecentRuns(runs, 50);
 
         // Check if directory is inactive (latest run > 7 days ago)
@@ -228,8 +265,10 @@ const TestResults = ({ showTables }: TestResultsProps) => {
             border: isInactive ?
               '1px dashed var(--warning-border, rgba(245, 158, 11, 0.8))' :
               '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-            margin: '0 0.5rem 1.5rem 0.5rem',
-            opacity: isInactive ? 0.8 : 1
+
+            opacity: isInactive ? 0.8 : 1,
+            maxWidth: '1400px',
+            margin: '20px auto'
           }}>
             <div
               onClick={() => toggleDirectory(directory)}
@@ -474,60 +513,6 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                   </div>
                 )}
 
-                <a
-                  href={`${directoryAddresses[directory]}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.8rem',
-                    color: isInactive
-                      ? 'var(--warning-text, #b45309)'
-                      : 'var(--text-secondary, #4b5563)',
-                    backgroundColor: isInactive
-                      ? 'var(--warning-bg, #fffbeb)'
-                      : 'var(--badge-bg, #f3f4f6)',
-                    borderRadius: '0.375rem',
-                    padding: '0.25rem 0.5rem',
-                    textDecoration: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    border: isInactive
-                      ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                      : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                    width: '120px',
-                    flexShrink: 0
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--card-bg, white)';
-                    e.currentTarget.style.borderColor = isInactive
-                      ? 'var(--warning-border, #f59e0b)'
-                      : 'var(--primary-color, #3b82f6)';
-                    e.currentTarget.style.color = isInactive
-                      ? 'var(--warning-text, #b45309)'
-                      : 'var(--primary-color, #3b82f6)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = isInactive
-                      ? 'var(--warning-bg, #fffbeb)'
-                      : 'var(--badge-bg, #f3f4f6)';
-                    e.currentTarget.style.borderColor = isInactive
-                      ? 'var(--warning-border, rgba(245, 158, 11, 0.3))'
-                      : 'var(--border-color, rgba(229, 231, 235, 0.8))';
-                    e.currentTarget.style.color = isInactive
-                      ? 'var(--warning-text, #b45309)'
-                      : 'var(--text-secondary, #4b5563)';
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                       style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem' }}>
-                    <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 0 0 2 4.25v11.5A2.25 2.25 0 0 0 4.25 18h11.5A2.25 2.25 0 0 0 18 15.75V4.25A2.25 2.25 0 0 0 15.75 2H4.25ZM4 13.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5ZM4.75 6.5a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5ZM4 9.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 4 9.5Z" clipRule="evenodd" />
-                  </svg>
-                  <span style={{ fontWeight: '500' }}>View Details</span>
-                </a>
 
               </div>
             </div>
@@ -537,7 +522,7 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                 {/* Summary Section */}
                 <div style={{
                   padding: '1rem 1.5rem',
-                  borderBottom: showTables ? '1px solid var(--border-color, rgba(229, 231, 235, 0.8))' : 'none',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   backgroundColor: isInactive
                     ? 'var(--summary-bg, rgba(254, 252, 232, 0.5))'
                     : 'var(--summary-bg, rgba(249, 250, 251, 0.5))'
@@ -560,64 +545,158 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      backgroundColor: isInactive
-                        ? 'var(--warning-bg, rgba(255, 251, 235, 0.8))'
-                        : 'var(--badge-bg, #f3f4f6)',
-                      borderRadius: '0.375rem',
-                      padding: '0.25rem',
-                      border: isInactive
-                        ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                        : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                      gap: '0.5rem'
                     }}>
-                      <button
-                        onClick={() => setGroupBy('test')}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.75rem',
-                          fontWeight: groupBy === 'test' ? '600' : '400',
-                          backgroundColor: groupBy === 'test'
-                            ? isInactive
-                                ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
-                                : 'var(--card-bg, white)'
-                            : 'transparent',
-                          border: 'none',
-                          borderRadius: '0.25rem',
-                          cursor: 'pointer',
-                          color: isInactive
-                            ? 'var(--warning-text, #b45309)'
-                            : 'var(--text-primary, #111827)',
-                          marginRight: '0.25rem',
-                          boxShadow: groupBy === 'test'
-                            ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                            : 'none',
-                        }}
-                      >
-                        Group by Test
-                      </button>
-                      <button
-                        onClick={() => setGroupBy('client')}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.75rem',
-                          fontWeight: groupBy === 'client' ? '600' : '400',
-                          backgroundColor: groupBy === 'client'
-                            ? isInactive
-                                ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
-                                : 'var(--card-bg, white)'
-                            : 'transparent',
-                          border: 'none',
-                          borderRadius: '0.25rem',
-                          cursor: 'pointer',
-                          color: isInactive
-                            ? 'var(--warning-text, #b45309)'
-                            : 'var(--text-primary, #111827)',
-                          boxShadow: groupBy === 'client'
-                            ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                            : 'none',
-                        }}
-                      >
-                        Group by Client
-                      </button>
+                      {/* Sort By Selector */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: isInactive
+                          ? 'var(--warning-bg, rgba(255, 251, 235, 0.8))'
+                          : 'var(--badge-bg, #f3f4f6)',
+                        borderRadius: '0.375rem',
+                        padding: '0.25rem',
+                        border: isInactive
+                          ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                          : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                      }}>
+                        <button
+                          onClick={() => setSortBy('name')}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: sortBy === 'name' ? '600' : '400',
+                            backgroundColor: sortBy === 'name'
+                              ? isInactive
+                                  ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
+                                  : 'var(--card-bg, white)'
+                              : 'transparent',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer',
+                            color: isInactive
+                              ? 'var(--warning-text, #b45309)'
+                              : 'var(--text-primary, #111827)',
+                            boxShadow: sortBy === 'name'
+                              ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                              : 'none',
+                          }}
+                        >
+                          Sort by Name
+                        </button>
+                        <button
+                          onClick={() => setSortBy('coverage')}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: sortBy === 'coverage' ? '600' : '400',
+                            backgroundColor: sortBy === 'coverage'
+                              ? isInactive
+                                  ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
+                                  : 'var(--card-bg, white)'
+                              : 'transparent',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer',
+                            color: isInactive
+                              ? 'var(--warning-text, #b45309)'
+                              : 'var(--text-primary, #111827)',
+                            boxShadow: sortBy === 'coverage'
+                              ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                              : 'none',
+                          }}
+                        >
+                          Sort by Coverage
+                        </button>
+                        <button
+                          onClick={() => setSortBy('time')}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: sortBy === 'time' ? '600' : '400',
+                            backgroundColor: sortBy === 'time'
+                              ? isInactive
+                                  ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
+                                  : 'var(--card-bg, white)'
+                              : 'transparent',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer',
+                            color: isInactive
+                              ? 'var(--warning-text, #b45309)'
+                              : 'var(--text-primary, #111827)',
+                            boxShadow: sortBy === 'time'
+                              ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                              : 'none',
+                          }}
+                        >
+                          Sort by Time
+                        </button>
+                      </div>
+
+                      {/* Group By Selector */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: isInactive
+                          ? 'var(--warning-bg, rgba(255, 251, 235, 0.8))'
+                          : 'var(--badge-bg, #f3f4f6)',
+                        borderRadius: '0.375rem',
+                        padding: '0.25rem',
+                        border: isInactive
+                          ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                          : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                      }}>
+                        <button
+                          onClick={() => setGroupBy('test')}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: groupBy === 'test' ? '600' : '400',
+                            backgroundColor: groupBy === 'test'
+                              ? isInactive
+                                  ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
+                                  : 'var(--card-bg, white)'
+                              : 'transparent',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer',
+                            color: isInactive
+                              ? 'var(--warning-text, #b45309)'
+                              : 'var(--text-primary, #111827)',
+                            marginRight: '0.25rem',
+                            boxShadow: groupBy === 'test'
+                              ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                              : 'none',
+                          }}
+                        >
+                          Group by Test
+                        </button>
+                        <button
+                          onClick={() => setGroupBy('client')}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: groupBy === 'client' ? '600' : '400',
+                            backgroundColor: groupBy === 'client'
+                              ? isInactive
+                                  ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
+                                  : 'var(--card-bg, white)'
+                              : 'transparent',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer',
+                            color: isInactive
+                              ? 'var(--warning-text, #b45309)'
+                              : 'var(--text-primary, #111827)',
+                            boxShadow: groupBy === 'client'
+                              ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                              : 'none',
+                          }}
+                        >
+                          Group by Client
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -636,17 +715,15 @@ const TestResults = ({ showTables }: TestResultsProps) => {
                 </div>
 
                 {/* Table Section */}
-                {showTables && (
-                  <TestResultsTable
-                    runs={runs}
-                    directory={directory}
-                    directoryAddress={directoryAddresses[directory]}
-                    testNameFilter={testNameFilter}
-                    clientFilter={clientFilter}
-                    setTestNameFilter={setTestNameFilter}
-                    setClientFilter={setClientFilter}
-                  />
-                )}
+                <TestResultsTable
+                  runs={runs}
+                  directory={directory}
+                  directoryAddress={directoryAddresses[directory]}
+                  testNameFilter={testNameFilter}
+                  clientFilter={clientFilter}
+                  setTestNameFilter={setTestNameFilter}
+                  setClientFilter={setClientFilter}
+                />
               </>
             )}
           </div>
