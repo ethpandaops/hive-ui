@@ -2,6 +2,10 @@ import { TestRun } from '../types';
 import { format } from 'date-fns';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
+
+type SortField = 'date' | 'name' | 'total' | 'pass' | 'fail' | 'status' | null;
+type SortDirection = 'asc' | 'desc';
 
 interface TestResultsTableProps {
   runs: TestRun[];
@@ -21,6 +25,8 @@ const TestResultsTable = ({
   setTestNameFilter,
   setClientFilter
 }: TestResultsTableProps) => {
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Apply filters to the test runs
   const filteredRuns = runs.filter(run => {
@@ -80,6 +86,69 @@ const TestResultsTable = ({
     return format(date, 'MMM d, yyyy HH:mm:ss');
   };
 
+  // Handle column header click for sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default direction
+      setSortField(field);
+      setSortDirection(field === 'name' ? 'asc' : 'desc'); // Default asc for name, desc for others
+    }
+  };
+
+  // Apply sorting to filtered runs
+  const sortData = (data: TestRun[]): TestRun[] => {
+    if (!sortField) return data;
+
+    return [...data].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case 'date':
+          comparison = new Date(a.start).getTime() - new Date(b.start).getTime();
+          break;
+        case 'name':
+          const nameA = a.name.split('/').slice(1).join('/').toLowerCase();
+          const nameB = b.name.split('/').slice(1).join('/').toLowerCase();
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case 'total':
+          comparison = a.ntests - b.ntests;
+          break;
+        case 'pass':
+          comparison = a.passes - b.passes;
+          break;
+        case 'fail':
+          comparison = a.fails - b.fails;
+          break;
+        case 'status':
+          // Sort by pass percentage
+          const passRateA = a.ntests > 0 ? a.passes / a.ntests : 0;
+          const passRateB = b.ntests > 0 ? b.passes / b.ntests : 0;
+          comparison = passRateA - passRateB;
+          break;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  };
+
+  // Get sorted data
+  const sortedData = sortData(filteredRuns);
+
+  // Render sort indicator
+  const renderSortIndicator = (field: SortField) => {
+    if (sortField !== field) return null;
+
+    return (
+      <span style={{ marginLeft: '0.25rem', fontSize: '0.7rem' }}>
+        {sortDirection === 'asc' ? '↑' : '↓'}
+      </span>
+    );
+  };
+
   return (
     <div style={{ overflow: 'auto' }}>
       <div style={{
@@ -128,29 +197,37 @@ const TestResultsTable = ({
       }}>
         <thead style={{ backgroundColor: 'var(--table-header-bg, #f9fafb)' }}>
           <tr>
-            <th style={{
-              padding: '0.75rem 1rem',
-              textAlign: 'left',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: 'var(--text-secondary, #6b7280)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
-            }}>
-              Date
+            <th
+              onClick={() => handleSort('date')}
+              style={{
+                padding: '0.75rem 1rem',
+                textAlign: 'left',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: 'var(--text-secondary, #6b7280)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                cursor: 'pointer'
+              }}
+            >
+              Date {renderSortIndicator('date')}
             </th>
-            <th style={{
-              padding: '0.75rem 1rem',
-              textAlign: 'left',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: 'var(--text-secondary, #6b7280)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
-            }}>
-              Test Name
+            <th
+              onClick={() => handleSort('name')}
+              style={{
+                padding: '0.75rem 1rem',
+                textAlign: 'left',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: 'var(--text-secondary, #6b7280)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                cursor: 'pointer'
+              }}
+            >
+              Test Name {renderSortIndicator('name')}
             </th>
             <th style={{
               padding: '0.75rem 1rem',
@@ -165,44 +242,56 @@ const TestResultsTable = ({
             }}>
               Clients
             </th>
-            <th style={{
-              padding: '0.5rem',
-              textAlign: 'right',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: 'var(--text-secondary, #6b7280)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '50px'
-            }}>
-              Total
+            <th
+              onClick={() => handleSort('total')}
+              style={{
+                padding: '0.5rem',
+                textAlign: 'right',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: 'var(--text-secondary, #6b7280)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                width: '50px',
+                cursor: 'pointer'
+              }}
+            >
+              Total {renderSortIndicator('total')}
             </th>
-            <th style={{
-              padding: '0.5rem',
-              textAlign: 'right',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: 'var(--text-secondary, #6b7280)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '50px'
-            }}>
-              Pass
+            <th
+              onClick={() => handleSort('pass')}
+              style={{
+                padding: '0.5rem',
+                textAlign: 'right',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: 'var(--text-secondary, #6b7280)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                width: '50px',
+                cursor: 'pointer'
+              }}
+            >
+              Pass {renderSortIndicator('pass')}
             </th>
-            <th style={{
-              padding: '0.5rem',
-              textAlign: 'right',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: 'var(--text-secondary, #6b7280)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '50px'
-            }}>
-              Fail
+            <th
+              onClick={() => handleSort('fail')}
+              style={{
+                padding: '0.5rem',
+                textAlign: 'right',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: 'var(--text-secondary, #6b7280)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                width: '50px',
+                cursor: 'pointer'
+              }}
+            >
+              Fail {renderSortIndicator('fail')}
             </th>
             <th style={{
               padding: '0.5rem',
@@ -217,18 +306,22 @@ const TestResultsTable = ({
             }}>
               Diff
             </th>
-            <th style={{
-              padding: '0.5rem',
-              textAlign: 'right',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: 'var(--text-secondary, #6b7280)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '80px'
-            }}>
-              Status
+            <th
+              onClick={() => handleSort('status')}
+              style={{
+                padding: '0.5rem',
+                textAlign: 'right',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: 'var(--text-secondary, #6b7280)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                width: '80px',
+                cursor: 'pointer'
+              }}
+            >
+              Status {renderSortIndicator('status')}
             </th>
             <th style={{
               padding: '0.5rem',
@@ -246,7 +339,7 @@ const TestResultsTable = ({
           </tr>
         </thead>
         <tbody>
-          {filteredRuns.map((run, runIndex) => {
+          {sortedData.map((run, runIndex) => {
             const statusStyles = getStatusStyles(run);
             const fileName = run.fileName;
             const diff = getPassDiff(run);
