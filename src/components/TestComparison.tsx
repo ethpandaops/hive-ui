@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { fetchDirectories, fetchTestDetail, fetchTestRuns } from '../services/api';
-import { TestDetail, TestRun, TestCaseDetail } from '../types';
+import { TestDetail, TestCaseDetail } from '../types';
 import { format, isValid } from 'date-fns';
 import Header from './Header';
 import Footer from './Footer';
@@ -27,7 +27,6 @@ const TestComparison = () => {
   const [discoveryAddress, setDiscoveryAddress] = useState<string | null>(null);
   const [showTables, setShowTables] = useState(true);
   const [testDetails, setTestDetails] = useState<Record<string, TestDetail>>({});
-  const navigate = useNavigate();
 
   // Add state for pagination and search
   const [currentPage, setCurrentPage] = useState(1);
@@ -115,8 +114,6 @@ const TestComparison = () => {
     return details.every(detail => detail.summaryResult.pass === firstResult);
   };
 
-  // Add a stable reference check for testDetails
-  const testDetailsJSON = JSON.stringify(testDetails);
 
   // Create comparison data structure when test details are loaded - wrapped with useMemo
   const comparisonTestCases = useMemo(() => {
@@ -163,7 +160,7 @@ const TestComparison = () => {
       // If same status, sort by name
       return a.name.localeCompare(b.name);
     });
-  }, [testDetailsJSON]); // Use the stringified version for a stable reference
+  }, [testDetails]); // Use the stringified version for a stable reference
 
   // Filter and paginate comparison test cases
   const filteredTestCases = useMemo(() => {
@@ -229,6 +226,7 @@ const TestComparison = () => {
         return `${minutes}m ${seconds}s`;
       }
     } catch (error) {
+      console.error('Error calculating duration:', error);
       return 'Error calculating';
     }
   };
@@ -324,22 +322,6 @@ const TestComparison = () => {
     backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255, 237, 213, 0.7)',
     borderLeft: `3px solid ${isDarkMode ? '#f59e0b' : '#fb923c'}`
   };
-
-  // Action button style
-  const buttonStyle: React.CSSProperties = {
-    backgroundColor: isDarkMode ? '#334155' : '#f1f5f9',
-    color: isDarkMode ? '#f8fafc' : '#1e293b',
-    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
-    borderRadius: '0.375rem',
-    padding: '0.5rem 1rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  };
-
 
   // Add a loading indicator component for better UX
   const LoadingSpinner = ({ size = '2rem', color = '#3b82f6', text = 'Loading...' }) => (
@@ -722,11 +704,6 @@ const TestComparison = () => {
                           display: 'flex',
                           flexDirection: 'column',
                           fontWeight: shouldHighlight(testCase) ? '500' : 'normal',
-                          //maxWidth: '400px',
-                          //overflow: 'hidden',
-                          //textOverflow: 'ellipsis',
-                          //textOverflow: '',
-                          //whiteSpace: 'nowrap'
                           wordBreak: 'break-all'
                         }}>
                           <span title={testCase.name}>{testCase.name}</span>

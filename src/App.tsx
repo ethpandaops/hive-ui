@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ThemeProvider from './contexts/theme-provider';
 import { useState } from 'react';
+import React from 'react';
 import NotFound from './components/NotFound';
 
 const queryClient = new QueryClient();
@@ -39,8 +40,8 @@ const router = createHashRouter([
     path: '/test/:discoveryName/:suiteid',
     lazy: async () => {
       try {
-        // Use type assertion to handle dynamic import
-        const module = await import('./components/TestDetail') as any;
+        // Use unknown type instead of any
+        const module = await import('./components/TestDetail') as unknown as { default: React.ComponentType<unknown> };
         return { Component: module.default };
       } catch (error) {
         console.error('Failed to load TestDetail component:', error);
@@ -54,8 +55,8 @@ const router = createHashRouter([
     path: '/compare/:discoveryName',
     lazy: async () => {
       try {
-        // Use type assertion to handle dynamic import
-        const module = await import('./components/TestComparison') as any;
+        // Use unknown type instead of any
+        const module = await import('./components/TestComparison') as unknown as { default: React.ComponentType<unknown> };
         return { Component: module.default };
       } catch (error) {
         console.error('Failed to load TestComparison component:', error);
@@ -69,8 +70,8 @@ const router = createHashRouter([
     path: '/logs/:group/:suiteId/:logFile',
     lazy: async () => {
       try {
-        // Use type assertion to handle dynamic import
-        const module = await import('./components/LogViewer') as any;
+        // Use unknown type instead of any
+        const module = await import('./components/LogViewer') as unknown as { default: React.ComponentType<unknown> };
         return { Component: module.default };
       } catch (error) {
         console.error('Failed to load LogViewer component:', error);

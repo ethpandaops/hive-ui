@@ -110,9 +110,11 @@ const TestResultsTable = ({
           comparison = new Date(a.start).getTime() - new Date(b.start).getTime();
           break;
         case 'name':
-          const nameA = a.name.split('/').slice(1).join('/').toLowerCase();
-          const nameB = b.name.split('/').slice(1).join('/').toLowerCase();
-          comparison = nameA.localeCompare(nameB);
+          {
+            const nameA = a.name.split('/').slice(1).join('/').toLowerCase();
+            const nameB = b.name.split('/').slice(1).join('/').toLowerCase();
+            comparison = nameA.localeCompare(nameB);
+          }
           break;
         case 'total':
           comparison = a.ntests - b.ntests;
@@ -125,9 +127,11 @@ const TestResultsTable = ({
           break;
         case 'status':
           // Sort by pass percentage
-          const passRateA = a.ntests > 0 ? a.passes / a.ntests : 0;
-          const passRateB = b.ntests > 0 ? b.passes / b.ntests : 0;
-          comparison = passRateA - passRateB;
+          {
+            const passRateA = a.ntests > 0 ? a.passes / a.ntests : 0;
+            const passRateB = b.ntests > 0 ? b.passes / b.ntests : 0;
+            comparison = passRateA - passRateB;
+          }
           break;
       }
 
