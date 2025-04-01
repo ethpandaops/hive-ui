@@ -35,6 +35,45 @@ const TestResultsTable = ({
     return matchesTestName && matchesClient;
   });
 
+  // Sort runs by start time (newest first) for each test/client combination
+  const sortedRuns = [...runs].sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
+
+  // Helper function to find the previous run for a current run
+  const findPreviousRun = (currentRun: TestRun): TestRun | null => {
+    // Get the current test identity
+    const testName = currentRun.name.split('/').slice(1).join('/'); // Format test name consistently
+    const clientKey = currentRun.clients.sort().join(',');
+    const currentRunTime = new Date(currentRun.start).getTime();
+
+    // Find the previous run with the same test name and client combination
+    const previousRun = sortedRuns.find(run => {
+      const runTestName = run.name.split('/').slice(1).join('/');
+      const runClientKey = run.clients.sort().join(',');
+      const runTime = new Date(run.start).getTime();
+
+      return runTestName === testName &&
+             runClientKey === clientKey &&
+             runTime < currentRunTime;
+    });
+
+    return previousRun || null;
+  };
+
+  // Calculate pass difference with previous run
+  const getPassDiff = (currentRun: TestRun): { value: number, percentage: number } | null => {
+    const previousRun = findPreviousRun(currentRun);
+    if (!previousRun) return null;
+
+    const diff = currentRun.passes - previousRun.passes;
+
+    // Calculate percentage difference in success rate
+    const currentPassRate = currentRun.ntests > 0 ? (currentRun.passes / currentRun.ntests) * 100 : 0;
+    const previousPassRate = previousRun.ntests > 0 ? (previousRun.passes / previousRun.ntests) * 100 : 0;
+    const percentage = currentPassRate - previousPassRate;
+
+    return { value: diff, percentage };
+  };
+
   // Helper function to format date
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -135,7 +174,43 @@ const TestResultsTable = ({
               letterSpacing: '0.05em',
               borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
             }}>
-              Tests
+              Total
+            </th>
+            <th style={{
+              padding: '0.75rem 1rem',
+              textAlign: 'right',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: 'var(--text-secondary, #6b7280)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+            }}>
+              Passed
+            </th>
+            <th style={{
+              padding: '0.75rem 1rem',
+              textAlign: 'right',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: 'var(--text-secondary, #6b7280)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+            }}>
+              Failed
+            </th>
+            <th style={{
+              padding: '0.75rem 1rem',
+              textAlign: 'right',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: 'var(--text-secondary, #6b7280)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+            }}>
+              Diff
             </th>
             <th style={{
               padding: '0.75rem 1rem',
@@ -167,6 +242,8 @@ const TestResultsTable = ({
           {filteredRuns.map((run, runIndex) => {
             const statusStyles = getStatusStyles(run);
             const fileName = run.fileName;
+            const diff = getPassDiff(run);
+
             return (
               <tr key={`${run.name}-${runIndex}`} style={{
                 backgroundColor: 'var(--card-bg, white)',
@@ -239,17 +316,78 @@ const TestResultsTable = ({
                 </td>
                 <td style={{
                   padding: '0.75rem 1rem',
+                  fontSize: '0.875rem',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  whiteSpace: 'nowrap',
+                  textAlign: 'right',
+                  color: 'var(--text-primary, #111827)'
+                }}>
+                  {run.ntests}
+                </td>
+                <td style={{
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.875rem',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  whiteSpace: 'nowrap',
+                  textAlign: 'right',
+                  color: 'var(--success-text, #047857)',
+                  fontWeight: '500'
+                }}>
+                  {run.passes}
+                </td>
+                <td style={{
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.875rem',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  whiteSpace: 'nowrap',
+                  textAlign: 'right',
+                  color: run.fails > 0 ? 'var(--error-text, #b91c1c)' : 'var(--text-secondary, #6b7280)',
+                  fontWeight: run.fails > 0 ? '500' : 'normal'
+                }}>
+                  {run.fails}
+                </td>
+                <td style={{
+                  padding: '0.75rem 1rem',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   whiteSpace: 'nowrap',
                   textAlign: 'right'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--text-primary, #111827)' }}>{run.ntests}</span>
-                    <span style={{ fontSize: '0.875rem', color: '#047857' }}>({run.passes})</span>
-                    {run.fails > 0 && (
-                      <span style={{ fontSize: '0.875rem', color: '#b91c1c' }}>({run.fails})</span>
-                    )}
-                  </div>
+                  {diff ? (
+                    diff.value !== 0 ? (
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        justifyContent: 'center',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        color: diff.value > 0
+                          ? 'var(--success-text, #047857)'
+                          : 'var(--error-text, #b91c1c)'
+                      }}>
+                        <span>
+                          {diff.value > 0 ? '↑' : '↓'}
+                        </span>
+                        <span>
+                          {diff.value > 0 ? '+' : ''}{diff.value}
+                        </span>
+                      </div>
+                    ) : (
+                      <span style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--text-secondary, #6b7280)'
+                      }}>
+                        —
+                      </span>
+                    )
+                  ) : (
+                    <span style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary, #6b7280)'
+                    }}>
+                      —
+                    </span>
+                  )}
                 </td>
                 <td style={{
                   padding: '0.75rem 1rem',
@@ -316,7 +454,7 @@ const TestResultsTable = ({
           })}
           {filteredRuns.length === 0 && (
             <tr>
-              <td colSpan={6} style={{
+              <td colSpan={9} style={{
                 padding: '2rem',
                 textAlign: 'center',
                 color: 'var(--text-secondary)',
