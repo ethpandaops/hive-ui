@@ -22,7 +22,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
   const [openPopover, setOpenPopover] = useState<number | null>(null);
   const displayName = groupBy === 'test'
     ? run.clients.join(', ')  // When grouped by test, show clients
-    : run.name.split('/').slice(1).join('/'); // When grouped by client, show test name
+    : run.name;
 
   // Remove .json extension for the URL
   const suiteid = run.fileName.replace(/\.json$/, '');

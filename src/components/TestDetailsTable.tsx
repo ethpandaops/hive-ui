@@ -694,10 +694,11 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                     </div>
                   </td>
                   <td style={tableCellStyle} onClick={(e) => e.stopPropagation()}>
-                    <Link
-                      to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(Object.values(testCase.clientInfo)[0]?.logFile || '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    {testCase.clientInfo && Object.values(testCase.clientInfo)[0]?.logFile && (
+                      <Link
+                        to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(Object.values(testCase.clientInfo)[0]?.logFile || '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       style={{
                         color: '#6366f1',
                         backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
@@ -715,7 +716,8 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                         <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                       </svg>
                       Logs
-                    </Link>
+                      </Link>
+                    )}
                   </td>
                 </tr>
 

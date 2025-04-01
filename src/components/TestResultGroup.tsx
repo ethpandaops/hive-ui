@@ -40,7 +40,7 @@ const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory, directoryAdd
             </>
           ) : (
             <>
-              <span style={{ marginRight: '0.5rem' }}>👥</span>
+              <span style={{ marginRight: '0.5rem' }}>💽</span>
               {groupKey.replace(/\+/g, ', ')}
             </>
           )}

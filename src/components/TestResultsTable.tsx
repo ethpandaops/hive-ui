@@ -30,7 +30,7 @@ const TestResultsTable = ({
 
   // Apply filters to the test runs
   const filteredRuns = runs.filter(run => {
-    const testName = run.name.split('/').slice(1).join('/');
+    const testName = run.name;
     const matchesTestName = testNameFilter === '' ||
       testName.toLowerCase().includes(testNameFilter.toLowerCase());
 
@@ -47,13 +47,13 @@ const TestResultsTable = ({
   // Helper function to find the previous run for a current run
   const findPreviousRun = (currentRun: TestRun): TestRun | null => {
     // Get the current test identity
-    const testName = currentRun.name.split('/').slice(1).join('/'); // Format test name consistently
+    const testName = currentRun.name;
     const clientKey = currentRun.clients.sort().join(',');
     const currentRunTime = new Date(currentRun.start).getTime();
 
     // Find the previous run with the same test name and client combination
     const previousRun = sortedRuns.find(run => {
-      const runTestName = run.name.split('/').slice(1).join('/');
+      const runTestName = run.name;
       const runClientKey = run.clients.sort().join(',');
       const runTime = new Date(run.start).getTime();
 
@@ -111,8 +111,8 @@ const TestResultsTable = ({
           break;
         case 'name':
           {
-            const nameA = a.name.split('/').slice(1).join('/').toLowerCase();
-            const nameB = b.name.split('/').slice(1).join('/').toLowerCase();
+            const nameA = a.name.toLowerCase();
+            const nameB = b.name.toLowerCase();
             comparison = nameA.localeCompare(nameB);
           }
           break;
@@ -376,7 +376,7 @@ const TestResultsTable = ({
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   whiteSpace: 'nowrap'
                 }}>
-                  {run.name.split('/').slice(1).join('/')}
+                  {run.name}
                 </td>
                 <td style={{
                   padding: '0.75rem 1rem',
@@ -389,7 +389,7 @@ const TestResultsTable = ({
                     flexDirection: 'column',
                     gap: '0.5rem'
                   }}>
-                    {Object.entries(run.versions).map(([client, version]) => (
+                    {run.versions && Object.entries(run.versions).map(([client, version]) => (
                       <div key={client} style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -411,6 +411,21 @@ const TestResultsTable = ({
                         }}
                         title={version}>
                           {version.length > 80 ? version.substring(0, 80) + '...' : version}
+                        </div>
+                      </div>
+                    ))}
+
+                    {!run.versions && run.clients && run.clients.map((client) => (
+                      <div key={client} style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        fontSize: '0.75rem'
+                      }}>
+                        <div style={{
+                          fontWeight: '500',
+                          color: 'var(--text-primary, #111827)'
+                        }}>
+                          {client}
                         </div>
                       </div>
                     ))}
