@@ -54,8 +54,12 @@ const LogViewer = () => {
 
   // Handle line number click
   const handleLineClick = (lineNumber: number) => {
+    // Create new URLSearchParams to preserve existing parameters
+    const newParams = new URLSearchParams(searchParams);
+    // Update the line parameter
+    newParams.set('line', lineNumber.toString());
     // Prevent page refresh by using replace: true
-    setSearchParams({ line: lineNumber.toString() }, { replace: true });
+    setSearchParams(newParams, { replace: true });
     scrollToLine(lineNumber);
   };
 
