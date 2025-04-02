@@ -7,7 +7,6 @@ import { format, isValid } from 'date-fns';
 import Header from './Header';
 import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
-import DOMPurify from 'dompurify';
 import Breadcrumb from './Breadcrumb';
 import TestDetailsTable from './TestDetailsTable';
 
