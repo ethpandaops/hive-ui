@@ -785,9 +785,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                             <div style={{ overflow: 'hidden', width: '100%' }}>
                               <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Description</h4>
                               <div style={{ ...lightTextStyle, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
-                                {typeof testCase.description === 'string' && testCase.description.includes('<')
-                                  ? sanitizeAndRenderHTML(testCase.description)
-                                  : testCase.description}
+                                {sanitizeAndRenderHTML(testCase.description)}
                               </div>
 
                               {/* Log excerpt section */}
