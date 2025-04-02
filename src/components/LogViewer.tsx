@@ -13,181 +13,13 @@ import Header from './Header';
 import Footer from './Footer';
 import Breadcrumb from './Breadcrumb';
 import { useTheme } from '../contexts/useTheme';
-
-// Custom CSS for Prism themes - t
-const prismLightTheme = `
-/* Light theme - based on prism.css */
-code.prism-light {
-  color: black;
-  background: none;
-  text-shadow: 0 1px white;
-  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-  text-align: left;
-  white-space: pre;
-  word-spacing: normal;
-  word-break: normal;
-  word-wrap: normal;
-  line-height: 1.5;
-  tab-size: 4;
-  hyphens: none;
-}
-
-code.prism-light .token.comment,
-code.prism-light .token.prolog,
-code.prism-light .token.doctype,
-code.prism-light .token.cdata {
-  color: slategray;
-}
-
-code.prism-light .token.punctuation {
-  color: #999;
-}
-
-code.prism-light .token.namespace {
-  opacity: .7;
-}
-
-code.prism-light .token.property,
-code.prism-light .token.tag,
-code.prism-light .token.boolean,
-code.prism-light .token.number,
-code.prism-light .token.constant,
-code.prism-light .token.symbol,
-code.prism-light .token.deleted {
-  color: #905;
-}
-
-code.prism-light .token.selector,
-code.prism-light .token.attr-name,
-code.prism-light .token.string,
-code.prism-light .token.char,
-code.prism-light .token.builtin,
-code.prism-light .token.inserted {
-  color: #690;
-}
-
-code.prism-light .token.operator,
-code.prism-light .token.entity,
-code.prism-light .token.url,
-code.prism-light .language-css .token.string,
-code.prism-light .style .token.string {
-  color: #9a6e3a;
-}
-
-code.prism-light .token.atrule,
-code.prism-light .token.attr-value,
-code.prism-light .token.keyword {
-  color: #07a;
-}
-
-code.prism-light .token.function,
-code.prism-light .token.class-name {
-  color: #DD4A68;
-}
-
-code.prism-light .token.regex,
-code.prism-light .token.important,
-code.prism-light .token.variable {
-  color: #e90;
-}
-`;
-
-const prismDarkTheme = `
-/* Dark theme - based on prism-tomorrow.css */
-code.prism-dark {
-  color: #ccc;
-  background: none;
-  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-  text-align: left;
-  white-space: pre;
-  word-spacing: normal;
-  word-break: normal;
-  word-wrap: normal;
-  line-height: 1.5;
-  tab-size: 4;
-  hyphens: none;
-}
-
-code.prism-dark .token.comment,
-code.prism-dark .token.block-comment,
-code.prism-dark .token.prolog,
-code.prism-dark .token.doctype,
-code.prism-dark .token.cdata {
-  color: #999;
-}
-
-code.prism-dark .token.punctuation {
-  color: #ccc;
-}
-
-code.prism-dark .token.tag,
-code.prism-dark .token.attr-name,
-code.prism-dark .token.namespace,
-code.prism-dark .token.deleted {
-  color: #e2777a;
-}
-
-code.prism-dark .token.function-name {
-  color: #6196cc;
-}
-
-code.prism-dark .token.boolean,
-code.prism-dark .token.number,
-code.prism-dark .token.function {
-  color: #f08d49;
-}
-
-code.prism-dark .token.property,
-code.prism-dark .token.class-name,
-code.prism-dark .token.constant,
-code.prism-dark .token.symbol {
-  color: #f8c555;
-}
-
-code.prism-dark .token.selector,
-code.prism-dark .token.important,
-code.prism-dark .token.atrule,
-code.prism-dark .token.keyword,
-code.prism-dark .token.builtin {
-  color: #cc99cd;
-}
-
-code.prism-dark .token.string,
-code.prism-dark .token.char,
-code.prism-dark .token.attr-value,
-code.prism-dark .token.regex,
-code.prism-dark .token.variable {
-  color: #7ec699;
-}
-
-code.prism-dark .token.operator,
-code.prism-dark .token.entity,
-code.prism-dark .token.url {
-  color: #67cdcc;
-}
-
-code.prism-dark .token.important,
-code.prism-dark .token.bold {
-  font-weight: bold;
-}
-
-code.prism-dark .token.italic {
-  font-style: italic;
-}
-
-code.prism-dark .token.entity {
-  cursor: help;
-}
-
-code.prism-dark .token.inserted {
-  color: green;
-}
-`;
+import { usePrismTheme } from './PrismTheme';
 
 const LogViewer = () => {
   const params = useParams<{ group: string, suiteId: string, logFile: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isDarkMode } = useTheme();
+  const { codeClassName } = usePrismTheme(isDarkMode);
 
   // State declarations
   const [logContent, setLogContent] = useState<string>('');
@@ -200,13 +32,16 @@ const LogViewer = () => {
   // Create refs to access DOM elements directly
   const logContentRef = useRef<HTMLPreElement>(null);
 
-
   const group = params.group || '';
   const suiteId = params.suiteId || '';
   const logFile = params.logFile || '';
 
   // Get the line number from URL query params
   const selectedLine = searchParams.get('line') ? parseInt(searchParams.get('line') || '0') : null;
+
+  // Get byte range parameters from URL query params
+  const beginByte = searchParams.get('begin') ? parseInt(searchParams.get('begin') || '0') : null;
+  const endByte = searchParams.get('end') ? parseInt(searchParams.get('end') || '0') : null;
 
   // Fetch directories to get the discovery address
   const { data: directories } = useQuery({
@@ -258,9 +93,15 @@ const LogViewer = () => {
         // Construct the URL to fetch the log file
         const logFilePath = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
 
-        const response = await fetch(logFilePath);
+        // Use range request if both begin and end bytes are provided
+        const headers: HeadersInit = {};
+        if (beginByte !== null && endByte !== null) {
+          headers['Range'] = `bytes=${beginByte}-${endByte}`;
+        }
 
-        if (!response.ok) {
+        const response = await fetch(logFilePath, { headers });
+
+        if (!response.ok && response.status !== 206) {
           throw new Error(`Failed to fetch log file: ${response.statusText}`);
         }
 
@@ -288,7 +129,7 @@ const LogViewer = () => {
     };
 
     fetchLogFile();
-  }, [discoveryAddress, suiteId, logFile]);
+  }, [discoveryAddress, suiteId, logFile, beginByte, endByte]);
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -299,6 +140,15 @@ const LogViewer = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Helper function to get log URL with optional byte range parameters
+  const getLogUrl = (includeRange: boolean = false): string => {
+    const baseUrl = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
+    if (includeRange && beginByte !== null && endByte !== null) {
+      return `${baseUrl}#:~:text=${beginByte},${endByte}`;
+    }
+    return baseUrl;
   };
 
   // Inject styles and handle theme switching
@@ -424,12 +274,8 @@ const LogViewer = () => {
     // Create style element for all styles
     const styleElement = document.createElement('style');
     styleElement.id = 'log-viewer-styles';
-    // Combine both Prism themes and log viewer styles
-    styleElement.textContent = `
-      ${prismLightTheme}
-      ${prismDarkTheme}
-      ${logViewerStyles}
-    `;
+    // Only include log viewer styles, not Prism themes (handled by usePrismTheme)
+    styleElement.textContent = logViewerStyles;
 
     // Add to document
     document.head.appendChild(styleElement);
@@ -497,10 +343,11 @@ const LogViewer = () => {
                   <div className="log-stats">
                     {lineCount} lines · {fileSize}
                     {selectedLine && ` · Line ${selectedLine} selected`}
+                    {beginByte !== null && endByte !== null && ` · Bytes ${beginByte}-${endByte}`}
                   </div>
                 </div>
                 <a
-                  href={`${discoveryAddress}/results/${decodeURIComponent(logFile)}`}
+                  href={getLogUrl(true)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="raw-log-link"
@@ -540,7 +387,7 @@ const LogViewer = () => {
                     paddingBottom: '0.5em'
                   }}
                 >
-                  <code className={`language-log ${isDarkMode ? 'prism-dark' : 'prism-light'}`}>
+                  <code className={`language-log ${codeClassName}`}>
                     {logContent}
                   </code>
                 </pre>

@@ -4,9 +4,12 @@ import { TestDetail } from '../types';
 import { format, isValid } from 'date-fns';
 import { useTheme } from '../contexts/useTheme';
 import DOMPurify from 'dompurify';
+import LogExcerpt from './LogExcerpt';
 
 interface TestDetailsTableProps {
-  testDetail: TestDetail;
+  testDetail: TestDetail & {
+    testDetailsLog?: string;
+  };
   discoveryName: string;
   suiteid: string;
   statusColors: {
@@ -756,6 +759,21 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                                 ? sanitizeAndRenderHTML(testCase.description)
                                 : testCase.description}
                             </div>
+
+                            {/* Log excerpt section */}
+                            {testCase.summaryResult.log && testDetail.testDetailsLog && (
+                              <>
+                                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Log Excerpt</h4>
+                                <LogExcerpt
+                                  discoveryName={discoveryName}
+                                  logFile={testDetail.testDetailsLog}
+                                  beginByte={testCase.summaryResult.log.begin}
+                                  endByte={testCase.summaryResult.log.end}
+                                  isDarkMode={isDarkMode}
+                                  suiteid={suiteid}
+                                />
+                              </>
+                            )}
 
                             <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Timing</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
