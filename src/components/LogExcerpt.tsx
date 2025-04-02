@@ -96,14 +96,17 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
       borderRadius: '0.375rem',
       fontFamily: 'monospace',
       fontSize: '0.75rem',
-      overflowX: 'auto',
+      width: '100%',
+      maxWidth: '100%',
+      boxSizing: 'border-box',
       lineHeight: '1.5'
     }}>
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '0.75rem'
+        marginBottom: '0.75rem',
+        flexWrap: 'wrap'
       }}>
         <Link
           to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(logFile)}?begin=${beginByte}&end=${endByte}`}
@@ -138,19 +141,29 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
           Error: {error}
         </div>
       ) : (
-        <pre style={{
-          margin: 0,
-          whiteSpace: 'pre-wrap',
-          backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
-          padding: '0.75rem',
-          borderRadius: '0.25rem',
-          maxHeight: '200px',
-          overflow: 'auto'
-        }}>
-          <code className={`language-log ${codeClassName}`}>
-            {logContent}
-          </code>
-        </pre>
+        <div style={{ overflowX: 'auto', width: '100%', maxWidth: '100%' }}>
+          <pre style={{
+            margin: 0,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-all',
+            wordWrap: 'break-word',
+            backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
+            padding: '0.75rem',
+            borderRadius: '0.25rem',
+            maxHeight: '450px',
+            overflow: 'auto'
+          }}>
+            <code className={`language-log ${codeClassName}`} style={{
+              display: 'block',
+              maxWidth: '100%',
+              wordBreak: 'break-all',
+              wordWrap: 'break-word',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {logContent}
+            </code>
+          </pre>
+        </div>
       )}
     </div>
   );
