@@ -4,9 +4,12 @@ import { TestDetail } from '../types';
 import { format, isValid } from 'date-fns';
 import { useTheme } from '../contexts/useTheme';
 import DOMPurify from 'dompurify';
+import LogExcerpt from './LogExcerpt';
 
 interface TestDetailsTableProps {
-  testDetail: TestDetail;
+  testDetail: TestDetail & {
+    testDetailsLog?: string;
+  };
   discoveryName: string;
   suiteid: string;
   statusColors: {
@@ -345,7 +348,8 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     width: '100%',
     borderCollapse: 'separate',
     borderSpacing: 0,
-    marginBottom: '1.5rem'
+    marginBottom: '1.5rem',
+    tableLayout: 'fixed'
   };
 
   // Table header style
@@ -369,7 +373,8 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     color: isDarkMode ? '#f8fafc' : '#1e293b', // Light or dark text
     maxWidth: '0',
     overflow: 'hidden',
-    textOverflow: 'ellipsis'
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   };
 
   // Badge styles
@@ -464,12 +469,31 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     borderRadius: '0.375rem',
     padding: '1rem',
     border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+    width: '100%',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    overflowX: 'hidden'
   };
 
   // Sanitize and render HTML
   const sanitizeAndRenderHTML = (html: string) => {
+    // First sanitize the HTML
     const sanitizedHTML = DOMPurify.sanitize(html);
-    return <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+
+    // Check if it already has anchor tags - if so, don't process further to avoid nesting links
+    if (sanitizedHTML.includes('<a ')) {
+      return <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+    }
+
+    // URL regex pattern to detect URLs in text
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+
+    // Replace plain URLs with clickable links
+    const htmlWithLinks = sanitizedHTML.replace(urlRegex, (url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #6366f1; text-decoration: underline;">${url}</a>`;
+    });
+
+    return <div dangerouslySetInnerHTML={{ __html: htmlWithLinks }} />;
   };
 
   return (
@@ -611,7 +635,9 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
         padding: 0,
         overflow: 'hidden',
         borderRadius: '0.5rem',
-        position: 'relative'
+        position: 'relative',
+        width: '100%',
+        maxWidth: '100%'
       }}>
         {/* Status strip */}
         <div style={{
@@ -623,177 +649,207 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
           left: 0,
           zIndex: 1
         }}></div>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={{ ...tableHeaderStyle, width: '75%' }}>Test</th>
-              <th style={{ ...tableHeaderStyle, width: '100px' }}>Status</th>
-              <th style={{ ...tableHeaderStyle, width: '100px' }}>Duration</th>
-              <th style={{ ...tableHeaderStyle, width: '120px' }}>Logs</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedTestCases.map(([id, testCase]) => (
-              <React.Fragment key={id}>
-                <tr
-                  id={`test-row-${id}`}
-                  style={tableRowStyle(id)}
-                  onClick={() => toggleExpanded(id)}
-                  onMouseEnter={() => setHoveredRowId(id)}
-                  onMouseLeave={() => setHoveredRowId(null)}
-                >
-                  <td style={tableCellStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <span
+        <div style={{
+          width: '100%',
+          overflowX: 'auto',
+          boxSizing: 'border-box'
+        }}>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={{ ...tableHeaderStyle, width: '75%' }}>Test</th>
+                <th style={{ ...tableHeaderStyle, width: '100px' }}>Status</th>
+                <th style={{ ...tableHeaderStyle, width: '100px' }}>Duration</th>
+                <th style={{ ...tableHeaderStyle, width: '120px' }}>Logs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayedTestCases.map(([id, testCase]) => (
+                <React.Fragment key={id}>
+                  <tr
+                    id={`test-row-${id}`}
+                    style={tableRowStyle(id)}
+                    onClick={() => toggleExpanded(id)}
+                    onMouseEnter={() => setHoveredRowId(id)}
+                    onMouseLeave={() => setHoveredRowId(null)}
+                  >
+                    <td style={tableCellStyle}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <span
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: '0.75rem',
+                            color: isDarkMode ? '#94a3b8' : '#64748b',
+                            width: '1.5rem',
+                            height: '1.5rem',
+                            borderRadius: '0.25rem',
+                            transform: expandedTestId === id ? 'rotate(90deg)' : 'rotate(0deg)',
+                            flexShrink: 0
+                          }}
+                        >
+                          <span style={{
+                            fontSize: '0.75rem',
+                            display: 'inline-block',
+                            lineHeight: 1,
+                            flexShrink: 0
+                          }}>▶</span>
+                        </span>
+                        <span style={{
+                          wordBreak: 'break-word',
+                          overflowWrap: 'break-word',
+                          maxWidth: 'calc(100% - 2rem)',
+                          display: 'inline-block'
+                        }}>{testCase.name}</span>
+                      </div>
+                    </td>
+                    <td style={tableCellStyle}>
+                      <div style={testCase.summaryResult.pass ? passStyle : failStyle}>
+                        {testCase.summaryResult.pass ? (
+                          <>
+                            <span style={{ marginRight: '0.25rem' }}>✓</span>
+                            Pass
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ marginRight: '0.25rem' }}>✕</span>
+                            Fail
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td style={tableCellStyle}>
+                      <div style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                        {calculateDuration(testCase.start, testCase.end)}
+                      </div>
+                    </td>
+                    <td style={tableCellStyle} onClick={(e) => e.stopPropagation()}>
+                      {testCase.clientInfo && Object.values(testCase.clientInfo)[0]?.logFile && (
+                        <Link
+                          to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(Object.values(testCase.clientInfo)[0]?.logFile || '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         style={{
-                          display: 'flex',
+                          color: '#6366f1',
+                          backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          marginRight: '0.75rem',
-                          color: isDarkMode ? '#94a3b8' : '#64748b',
-                          width: '1.5rem',
-                          height: '1.5rem',
-                          borderRadius: '0.25rem',
-                          transform: expandedTestId === id ? 'rotate(90deg)' : 'rotate(0deg)',
-                          flexShrink: 0
+                          textDecoration: 'none'
                         }}
                       >
-                        <span style={{
-                          fontSize: '0.75rem',
-                          display: 'inline-block',
-                          lineHeight: 1,
-                          flexShrink: 0
-                        }}>▶</span>
-                      </span>
-                      <span style={{
-                        wordBreak: 'break-word',
-                        overflowWrap: 'break-word',
-                        maxWidth: 'calc(100% - 2rem)',
-                        display: 'inline-block'
-                      }}>{testCase.name}</span>
-                    </div>
-                  </td>
-                  <td style={tableCellStyle}>
-                    <div style={testCase.summaryResult.pass ? passStyle : failStyle}>
-                      {testCase.summaryResult.pass ? (
-                        <>
-                          <span style={{ marginRight: '0.25rem' }}>✓</span>
-                          Pass
-                        </>
-                      ) : (
-                        <>
-                          <span style={{ marginRight: '0.25rem' }}>✕</span>
-                          Fail
-                        </>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '0.875rem', height: '0.875rem', marginRight: '0.25rem' }}>
+                          <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                          <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
+                        Logs
+                        </Link>
                       )}
-                    </div>
-                  </td>
-                  <td style={tableCellStyle}>
-                    <div style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                      {calculateDuration(testCase.start, testCase.end)}
-                    </div>
-                  </td>
-                  <td style={tableCellStyle} onClick={(e) => e.stopPropagation()}>
-                    {testCase.clientInfo && Object.values(testCase.clientInfo)[0]?.logFile && (
-                      <Link
-                        to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(Object.values(testCase.clientInfo)[0]?.logFile || '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      style={{
-                        color: '#6366f1',
-                        backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
-                        padding: '0.35rem 0.75rem',
-                        borderRadius: '0.375rem',
-                        fontSize: '0.75rem',
-                        fontWeight: '500',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        textDecoration: 'none'
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '0.875rem', height: '0.875rem', marginRight: '0.25rem' }}>
-                        <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                        <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                      </svg>
-                      Logs
-                      </Link>
-                    )}
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
 
-                {/* Expanded row */}
-                {expandedTestId === id && (
-                  <tr style={{
-                    backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9'
-                  }}>
-                    <td colSpan={4} style={{ padding: '0.75rem' }}>
-                      <div style={{
-                        ...expandedRowStyle,
-                        position: 'relative'
-                      }}>
-                        {/* Status strip for expanded row */}
+                  {/* Expanded row */}
+                  {expandedTestId === id && (
+                    <tr style={{
+                      backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9'
+                    }}>
+                      <td colSpan={4} style={{ padding: '0.75rem' }}>
                         <div style={{
-                          height: '3px',
-                          backgroundColor: testCase.summaryResult.pass ?
-                            (isDarkMode ? '#10b981' : '#10b981') :
-                            (isDarkMode ? '#ef4444' : '#ef4444'),
-                          width: '100%',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0
-                        }}></div>
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '1.5rem',
-                          paddingTop: '0.5rem'
+                          ...expandedRowStyle,
+                          position: 'relative'
                         }}>
-                          {/* Description and Timing section */}
-                          <div style={{ overflow: 'hidden' }}>
-                            <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Description</h4>
-                            <div style={{ ...lightTextStyle, whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
-                              {typeof testCase.description === 'string' && testCase.description.includes('<')
-                                ? sanitizeAndRenderHTML(testCase.description)
-                                : testCase.description}
-                            </div>
+                          {/* Status strip for expanded row */}
+                          <div style={{
+                            height: '3px',
+                            backgroundColor: testCase.summaryResult.pass ?
+                              (isDarkMode ? '#10b981' : '#10b981') :
+                              (isDarkMode ? '#ef4444' : '#ef4444'),
+                            width: '100%',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0
+                          }}></div>
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '1.5rem',
+                            paddingTop: '0.5rem',
+                            width: '100%',
+                            overflowX: 'hidden'
+                          }}>
+                            {/* Description and Timing section */}
+                            <div style={{ overflow: 'hidden', width: '100%' }}>
+                              <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Description</h4>
+                              <div style={{ ...lightTextStyle, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
+                                {typeof testCase.description === 'string' && testCase.description.includes('<')
+                                  ? sanitizeAndRenderHTML(testCase.description)
+                                  : testCase.description}
+                              </div>
 
-                            <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Timing</h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                              <div>
-                                <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>START TIME</div>
-                                <div>{formatDate(testCase.start)}</div>
-                              </div>
-                              <div>
-                                <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>END TIME</div>
-                                <div>{formatDate(testCase.end)}</div>
-                              </div>
-                              <div>
-                                <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>DURATION</div>
-                                <div>{calculateDuration(testCase.start, testCase.end)}</div>
+                              {/* Log excerpt section */}
+                              {testCase.summaryResult.log && testDetail.testDetailsLog && (
+                                <>
+                                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Log Excerpt</h4>
+                                  <div style={{
+                                    width: '100%',
+                                    maxWidth: '100%',
+                                    overflowX: 'auto',
+                                    boxSizing: 'border-box'
+                                  }}>
+                                    <LogExcerpt
+                                      discoveryName={discoveryName}
+                                      logFile={testDetail.testDetailsLog}
+                                      beginByte={testCase.summaryResult.log.begin}
+                                      endByte={testCase.summaryResult.log.end}
+                                      isDarkMode={isDarkMode}
+                                      suiteid={suiteid}
+                                    />
+                                  </div>
+                                </>
+                              )}
+
+                              <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Timing</h4>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <div>
+                                  <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>START TIME</div>
+                                  <div>{formatDate(testCase.start)}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>END TIME</div>
+                                  <div>{formatDate(testCase.end)}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>DURATION</div>
+                                  <div>{calculateDuration(testCase.start, testCase.end)}</div>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
 
-            {filteredTestCases.length === 0 && (
-              <tr>
-                <td colSpan={4} style={{
-                  padding: '2rem',
-                  textAlign: 'center',
-                  ...lightTextStyle
-                }}>
-                  No results match the current search
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              {filteredTestCases.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    ...lightTextStyle
+                  }}>
+                    No results match the current search
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Bottom Pagination */}
