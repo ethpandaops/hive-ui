@@ -231,27 +231,6 @@ const TestDetail = () => {
     color: isDarkMode ? '#94a3b8' : '#64748b' // Dark or light muted text
   };
 
-  // Function to safely render HTML content
-  const sanitizeAndRenderHTML = (html: string) => {
-    // First sanitize the HTML
-    const sanitizedHTML = DOMPurify.sanitize(html);
-
-    // Check if it already has anchor tags - if so, don't process further to avoid nesting links
-    if (sanitizedHTML.includes('<a ')) {
-      return <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
-    }
-
-    // URL regex pattern to detect URLs in text
-    const urlRegex = /(https?:\/\/[^\s<]+)/g;
-
-    // Replace plain URLs with clickable links
-    const htmlWithLinks = sanitizedHTML.replace(urlRegex, (url) => {
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #6366f1; text-decoration: underline;">${url}</a>`;
-    });
-
-    return <div dangerouslySetInnerHTML={{ __html: htmlWithLinks }} />;
-  };
-
   // Reset expandedTestId when suite ID changes
   useEffect(() => {
     setExpandedTestId(null);
@@ -1143,9 +1122,7 @@ const TestDetail = () => {
                       ...lightTextStyle,
                       margin: 0
                     }}>
-                      {typeof testDetail.description === 'string' && testDetail.description.includes('<')
-                        ? sanitizeAndRenderHTML(testDetail.description)
-                        : testDetail.description}
+                      {testDetail.description}
                     </p>
                   </div>
 

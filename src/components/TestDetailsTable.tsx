@@ -471,8 +471,23 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
 
   // Sanitize and render HTML
   const sanitizeAndRenderHTML = (html: string) => {
+    // First sanitize the HTML
     const sanitizedHTML = DOMPurify.sanitize(html);
-    return <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+
+    // Check if it already has anchor tags - if so, don't process further to avoid nesting links
+    if (sanitizedHTML.includes('<a ')) {
+      return <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+    }
+
+    // URL regex pattern to detect URLs in text
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+
+    // Replace plain URLs with clickable links
+    const htmlWithLinks = sanitizedHTML.replace(urlRegex, (url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #6366f1; text-decoration: underline;">${url}</a>`;
+    });
+
+    return <div dangerouslySetInnerHTML={{ __html: htmlWithLinks }} />;
   };
 
   return (
@@ -754,7 +769,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                           {/* Description and Timing section */}
                           <div style={{ overflow: 'hidden' }}>
                             <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Description</h4>
-                            <div style={{ ...lightTextStyle, whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
+                            <div style={{ ...lightTextStyle, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
                               {typeof testCase.description === 'string' && testCase.description.includes('<')
                                 ? sanitizeAndRenderHTML(testCase.description)
                                 : testCase.description}

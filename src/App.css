@@ -20,6 +20,9 @@
   --error-text: #b91c1c;
   --error-border: #ef4444;
   --bg-color: #ffffff;
+  --code-text: #374151;
+  --link-color: #646cff;
+  --link-hover-color: #535bf2;
 }
 
 body {
@@ -52,6 +55,9 @@ body {
     --error-text: #f87171;
     --error-border: #dc2626;
     --bg-color: #111827;
+    --code-text: #d63384;
+    --link-color: #818cf8;
+    --link-hover-color: #a5b4fc;
   }
 
   body {
