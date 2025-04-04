@@ -34,7 +34,8 @@ const TestComparison = () => {
 
   // Add state for pagination and search
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
+  // Get search term from URL, defaulting to empty string
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
   const [itemsPerPage, setItemsPerPage] = useState(100);
 
   // Fetch directories to get the discovery address
@@ -118,12 +119,52 @@ const TestComparison = () => {
     return details.every(detail => detail.summaryResult.pass === firstResult);
   };
 
+  // Handle search change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearchTerm = e.target.value;
+    setSearchTerm(newSearchTerm);
+    setCurrentPage(1); // Reset to first page on new search
+
+    // Update URL with the search term
+    searchParams.set('search', newSearchTerm);
+    if (!newSearchTerm) {
+      searchParams.delete('search');
+    }
+    setSearchParams(searchParams);
+  };
+
+  // Update URL when pagination changes
+  const goToPage = (page: number) => {
+    const newPage = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(newPage);
+
+    // Update URL with page number if not on page 1
+    if (newPage > 1) {
+      searchParams.set('page', newPage.toString());
+    } else {
+      searchParams.delete('page');
+    }
+    setSearchParams(searchParams);
+  };
+
   // Update compareBy param in URL
   const handleCompareByChange = (newCompareBy: string) => {
     setCurrentPage(1); // Reset pagination when changing grouping
     searchParams.set('compareBy', newCompareBy);
+    searchParams.delete('page'); // Reset page param when changing grouping
     setSearchParams(searchParams);
   };
+
+  // Get initial page from URL params
+  useEffect(() => {
+    const pageParam = searchParams.get('page');
+    if (pageParam) {
+      const pageNumber = parseInt(pageParam, 10);
+      if (!isNaN(pageNumber) && pageNumber > 0) {
+        setCurrentPage(pageNumber);
+      }
+    }
+  }, [searchParams]);
 
   // Create comparison data structure when test details are loaded - wrapped with useMemo
   const comparisonTestCases = useMemo(() => {
@@ -253,17 +294,6 @@ const TestComparison = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredTestCases.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredTestCases, currentPage, itemsPerPage]);
-
-  // Handle search change
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page on new search
-  };
-
-  // Pagination controls
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
