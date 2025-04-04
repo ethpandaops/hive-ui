@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { fetchDirectories, fetchTestDetail, fetchTestRuns } from '../services/api';
@@ -18,10 +18,15 @@ interface ComparisonTestCase {
 const TestComparison = () => {
   const { isDarkMode } = useTheme();
   const { discoveryName } = useParams<{ discoveryName: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   // Store runIds in a stable reference using useMemo
   const runIds = useMemo(() => {
     return searchParams.get('runs')?.split(',') || [];
+  }, [searchParams]);
+
+  // Add compareBy state
+  const compareBy = useMemo(() => {
+    return searchParams.get('compareBy') || 'name';
   }, [searchParams]);
 
   const [discoveryAddress, setDiscoveryAddress] = useState<string | null>(null);
@@ -29,7 +34,8 @@ const TestComparison = () => {
 
   // Add state for pagination and search
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
+  // Get search term from URL, defaulting to empty string
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
   const [itemsPerPage, setItemsPerPage] = useState(100);
 
   // Fetch directories to get the discovery address
@@ -113,53 +119,165 @@ const TestComparison = () => {
     return details.every(detail => detail.summaryResult.pass === firstResult);
   };
 
+  // Handle search change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearchTerm = e.target.value;
+    setSearchTerm(newSearchTerm);
+    setCurrentPage(1); // Reset to first page on new search
+
+    // Update URL with the search term
+    searchParams.set('search', newSearchTerm);
+    if (!newSearchTerm) {
+      searchParams.delete('search');
+    }
+    setSearchParams(searchParams);
+  };
+
+  // Update URL when pagination changes
+  const goToPage = (page: number) => {
+    const newPage = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(newPage);
+
+    // Update URL with page number if not on page 1
+    if (newPage > 1) {
+      searchParams.set('page', newPage.toString());
+    } else {
+      searchParams.delete('page');
+    }
+    setSearchParams(searchParams);
+  };
+
+  // Update compareBy param in URL
+  const handleCompareByChange = (newCompareBy: string) => {
+    setCurrentPage(1); // Reset pagination when changing grouping
+    searchParams.set('compareBy', newCompareBy);
+    searchParams.delete('page'); // Reset page param when changing grouping
+    setSearchParams(searchParams);
+  };
+
+  // Get initial page from URL params
+  useEffect(() => {
+    const pageParam = searchParams.get('page');
+    if (pageParam) {
+      const pageNumber = parseInt(pageParam, 10);
+      if (!isNaN(pageNumber) && pageNumber > 0) {
+        setCurrentPage(pageNumber);
+      }
+    }
+  }, [searchParams]);
 
   // Create comparison data structure when test details are loaded - wrapped with useMemo
   const comparisonTestCases = useMemo(() => {
     if (Object.keys(testDetails).length === 0) return [];
 
-    // Collect all unique test case IDs across all runs
-    const allTestCaseIds = new Set<string>();
-    Object.values(testDetails).forEach(detail => {
-      Object.keys(detail.testCases).forEach(id => allTestCaseIds.add(id));
-    });
-
-    // Create comparison structure
-    const comparison: ComparisonTestCase[] = Array.from(allTestCaseIds).map(id => {
-      const firstDetailWithCase = Object.values(testDetails).find(detail => detail.testCases[id]);
-      const name = firstDetailWithCase?.testCases[id]?.name || id;
-
-      const details: Record<string, TestCaseDetail> = {};
-      Object.keys(testDetails).forEach(fileName => {
-        if (testDetails[fileName].testCases[id]) {
-          details[fileName] = testDetails[fileName].testCases[id];
-        }
+    if (compareBy === 'id') {
+      // Original grouping by ID
+      const allTestCaseIds = new Set<string>();
+      Object.values(testDetails).forEach(detail => {
+        Object.keys(detail.testCases).forEach(id => allTestCaseIds.add(id));
       });
 
-      return { id, name, details };
-    });
+      const comparison: ComparisonTestCase[] = Array.from(allTestCaseIds).map(id => {
+        const firstDetailWithCase = Object.values(testDetails).find(detail => detail.testCases[id]);
+        const name = firstDetailWithCase?.testCases[id]?.name || id;
 
-    // Sort cases - failed tests first, then by name
-    return comparison.sort((a, b) => {
-      // Check if any run has a failure for this test case
-      const aHasFailure = Object.values(a.details).some(detail => !detail.summaryResult.pass);
-      const bHasFailure = Object.values(b.details).some(detail => !detail.summaryResult.pass);
+        const details: Record<string, TestCaseDetail> = {};
+        Object.keys(testDetails).forEach(fileName => {
+          if (testDetails[fileName].testCases[id]) {
+            details[fileName] = testDetails[fileName].testCases[id];
+          }
+        });
 
-      // Status difference
-      if (aHasFailure && !bHasFailure) return -1;
-      if (!aHasFailure && bHasFailure) return 1;
+        return { id, name, details };
+      });
 
-      // Result difference (some passed, some failed)
-      const aHasDifference = !allSameResults(Object.values(a.details));
-      const bHasDifference = !allSameResults(Object.values(b.details));
+      // Sort cases - failed tests first, then by name
+      return comparison.sort((a, b) => {
+        // Check if any run has a failure for this test case
+        const aHasFailure = Object.values(a.details).some(detail => !detail.summaryResult.pass);
+        const bHasFailure = Object.values(b.details).some(detail => !detail.summaryResult.pass);
 
-      if (aHasDifference && !bHasDifference) return -1;
-      if (!aHasDifference && bHasDifference) return 1;
+        // Count failures
+        const aFailCount = Object.values(a.details).filter(detail => !detail.summaryResult.pass).length;
+        const bFailCount = Object.values(b.details).filter(detail => !detail.summaryResult.pass).length;
 
-      // If same status, sort by name
-      return a.name.localeCompare(b.name);
-    });
-  }, [testDetails]); // Use the stringified version for a stable reference
+        // First sort by whether there are any failures (failures first)
+        if (aHasFailure && !bHasFailure) return -1;
+        if (!aHasFailure && bHasFailure) return 1;
+
+        // Then sort by failure count (more failures first)
+        if (aFailCount !== bFailCount) {
+          return bFailCount - aFailCount;
+        }
+
+        // Result difference (some passed, some failed)
+        const aHasDifference = !allSameResults(Object.values(a.details));
+        const bHasDifference = !allSameResults(Object.values(b.details));
+
+        if (aHasDifference && !bHasDifference) return -1;
+        if (!aHasDifference && bHasDifference) return 1;
+
+        // If same status, sort by name
+        return a.name.localeCompare(b.name);
+      });
+    } else {
+      // Group by name
+      // First collect all unique test case names
+      const testCasesByName = new Map<string, ComparisonTestCase>();
+
+      // Iterate through all test details to collect cases by name
+      Object.entries(testDetails).forEach(([fileName, detail]) => {
+        Object.entries(detail.testCases).forEach(([, testCase]) => {
+          const name = testCase.name;
+
+          if (!testCasesByName.has(name)) {
+            testCasesByName.set(name, {
+              id: name, // Use name as the id for the grouped item
+              name,
+              details: {}
+            });
+          }
+
+          // Add this test case to the appropriate name group
+          const group = testCasesByName.get(name)!;
+          group.details[fileName] = testCase;
+        });
+      });
+
+      // Convert to array
+      const comparison = Array.from(testCasesByName.values());
+
+      // Sort cases - failed tests first, then by name
+      return comparison.sort((a, b) => {
+        // Check if any run has a failure for this test case
+        const aHasFailure = Object.values(a.details).some(detail => !detail.summaryResult.pass);
+        const bHasFailure = Object.values(b.details).some(detail => !detail.summaryResult.pass);
+
+        // Count failures
+        const aFailCount = Object.values(a.details).filter(detail => !detail.summaryResult.pass).length;
+        const bFailCount = Object.values(b.details).filter(detail => !detail.summaryResult.pass).length;
+
+        // First sort by whether there are any failures (failures first)
+        if (aHasFailure && !bHasFailure) return -1;
+        if (!aHasFailure && bHasFailure) return 1;
+
+        // Then sort by failure count (more failures first)
+        if (aFailCount !== bFailCount) {
+          return bFailCount - aFailCount;
+        }
+
+        // Result difference (some passed, some failed)
+        const aHasDifference = !allSameResults(Object.values(a.details));
+        const bHasDifference = !allSameResults(Object.values(b.details));
+
+        if (aHasDifference && !bHasDifference) return -1;
+        if (!aHasDifference && bHasDifference) return 1;
+
+        // If same status, sort by name
+        return a.name.localeCompare(b.name);
+      });
+    }
+  }, [testDetails, compareBy]); // Add compareBy to dependencies
 
   // Filter and paginate comparison test cases
   const filteredTestCases = useMemo(() => {
@@ -177,26 +295,10 @@ const TestComparison = () => {
     return filteredTestCases.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredTestCases, currentPage, itemsPerPage]);
 
-  // Handle search change
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page on new search
-  };
-
-  // Pagination controls
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
-
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
     return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
   };
-
-  // Helper to determine if we should highlight differences - memoize for performance
-  const shouldHighlight = useCallback((testCase: ComparisonTestCase) => {
-    return !allSameResults(Object.values(testCase.details));
-  }, []);
 
   // Calculate duration display
   const calculateDuration = (start: string, end: string) => {
@@ -316,12 +418,6 @@ const TestComparison = () => {
     color: isDarkMode ? '#94a3b8' : '#64748b'
   };
 
-  // Background for highlighted differences
-  const highlightBgStyle: React.CSSProperties = {
-    backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255, 237, 213, 0.7)',
-    borderLeft: `3px solid ${isDarkMode ? '#f59e0b' : '#fb923c'}`
-  };
-
   // Add a loading indicator component for better UX
   const LoadingSpinner = ({ size = '2rem', color = '#3b82f6', text = 'Loading...' }) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
@@ -403,6 +499,28 @@ const TestComparison = () => {
           </span>
         )}
       </div>
+      <div>
+          <div style={toggleButtonStyle}>
+            <div
+              onClick={() => handleCompareByChange('name')}
+              style={{
+                ...toggleOptionStyle,
+                ...(compareBy === 'name' ? activeToggleStyle : {})
+              }}
+            >
+              Compare by name
+            </div>
+            <div
+              onClick={() => handleCompareByChange('id')}
+              style={{
+                ...toggleOptionStyle,
+                ...(compareBy === 'id' ? activeToggleStyle : {})
+              }}
+            >
+              Compare by run index
+            </div>
+          </div>
+        </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <span style={{ ...lightTextStyle, fontSize: '0.75rem', marginRight: '0.5rem' }}>
@@ -507,6 +625,27 @@ const TestComparison = () => {
       </div>
     </div>
   );
+
+  // Add style for the toggle button
+  const toggleButtonStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    borderRadius: '0.375rem',
+    border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+    overflow: 'hidden',
+    fontSize: '0.75rem',
+  };
+
+  const toggleOptionStyle: React.CSSProperties = {
+    padding: '0.25rem 0.75rem',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+  };
+
+  const activeToggleStyle: React.CSSProperties = {
+    backgroundColor: isDarkMode ? '#3b82f6' : '#3b82f6',
+    color: '#ffffff',
+  };
 
   if (isTestDetailsLoading) {
     return (
@@ -692,27 +831,36 @@ const TestComparison = () => {
                     <tr
                       key={testCase.id}
                       style={{
-                        ...(shouldHighlight(testCase) ? highlightBgStyle : {}),
-                        backgroundColor: isDarkMode
-                          ? (index % 2 === 0 ? 'rgba(30, 41, 59, 0.5)' : 'rgba(30, 41, 59, 0.8)')
-                          : (index % 2 === 0 ? 'rgba(248, 250, 252, 0.5)' : 'white')
+                        // Highlight rows where any test failed
+                        ...(Object.values(testCase.details).some(detail => !detail.summaryResult.pass) ?
+                          {
+                            fontWeight: '500',
+                            borderLeft: `3px solid ${isDarkMode ? '#f59e0b' : '#fb923c'}`,
+                            backgroundColor: isDarkMode
+                              ? (index % 2 === 0 ? 'rgba(127, 29, 29, 0.1)' : 'rgba(127, 29, 29, 0.15)')
+                              : (index % 2 === 0 ? 'rgba(254, 202, 202, 0.2)' : 'rgba(254, 202, 202, 0.4)')
+                          } :
+                          {
+                            backgroundColor: isDarkMode
+                              ? (index % 2 === 0 ? 'rgba(30, 41, 59, 0.5)' : 'rgba(30, 41, 59, 0.8)')
+                              : (index % 2 === 0 ? 'rgba(248, 250, 252, 0.5)' : 'white')
+                          }),
                       }}
                     >
                       <td style={{...tableCellStyle, textAlign: 'left'}}>
                         <div style={{
                           display: 'flex',
                           flexDirection: 'column',
-                          fontWeight: shouldHighlight(testCase) ? '500' : 'normal',
                           wordBreak: 'break-all'
                         }}>
                           <span title={testCase.name}>{testCase.name}</span>
-                          {shouldHighlight(testCase) && (
+                          {compareBy === 'id' && (
                             <span style={{
                               fontSize: '0.75rem',
-                              color: isDarkMode ? '#fbbf24' : '#b45309',
-                              marginTop: '0.25rem'
+                              color: isDarkMode ? '#94a3b8' : '#64748b',
+                              fontFamily: 'monospace'
                             }}>
-                              ⚠️ Results differ between runs
+                              Run index: {testCase.id}
                             </span>
                           )}
                         </div>
@@ -723,7 +871,13 @@ const TestComparison = () => {
                           <td key={`${testCase.id}-${run.fileName}`} style={{ ...tableCellStyle, padding: '0.4rem', width: '100px', textAlign: 'center' }}>
                             {detail ? (
                               <Link
-                                to={`/test/${discoveryName}/${run.fileName.replace('.json', '')}?testnumber=${testCase.id}`}
+                                to={`/test/${discoveryName}/${run.fileName.replace('.json', '')}?testnumber=${compareBy === 'name' ?
+                                  // When grouped by name, find the actual ID for this test case in this run
+                                  Object.entries(testDetails[run.fileName].testCases)
+                                    .find(([, tc]) => tc.name === testCase.name)?.[0] || '' :
+                                  // When grouped by ID, use the ID directly
+                                  testCase.id
+                                }`}
                                 style={{
                                   textDecoration: 'none',
                                   display: 'flex',
