@@ -24,9 +24,9 @@ const TestComparison = () => {
     return searchParams.get('runs')?.split(',') || [];
   }, [searchParams]);
 
-  // Add groupBy state
-  const groupBy = useMemo(() => {
-    return searchParams.get('groupBy') || 'name';
+  // Add compareBy state
+  const compareBy = useMemo(() => {
+    return searchParams.get('compareBy') || 'name';
   }, [searchParams]);
 
   const [discoveryAddress, setDiscoveryAddress] = useState<string | null>(null);
@@ -118,10 +118,10 @@ const TestComparison = () => {
     return details.every(detail => detail.summaryResult.pass === firstResult);
   };
 
-  // Update groupBy param in URL
-  const handleGroupByChange = (newGroupBy: string) => {
+  // Update compareBy param in URL
+  const handleCompareByChange = (newCompareBy: string) => {
     setCurrentPage(1); // Reset pagination when changing grouping
-    searchParams.set('groupBy', newGroupBy);
+    searchParams.set('compareBy', newCompareBy);
     setSearchParams(searchParams);
   };
 
@@ -129,7 +129,7 @@ const TestComparison = () => {
   const comparisonTestCases = useMemo(() => {
     if (Object.keys(testDetails).length === 0) return [];
 
-    if (groupBy === 'id') {
+    if (compareBy === 'id') {
       // Original grouping by ID
       const allTestCaseIds = new Set<string>();
       Object.values(testDetails).forEach(detail => {
@@ -218,7 +218,7 @@ const TestComparison = () => {
         return a.name.localeCompare(b.name);
       });
     }
-  }, [testDetails, groupBy]); // Add groupBy to dependencies
+  }, [testDetails, compareBy]); // Add compareBy to dependencies
 
   // Filter and paginate comparison test cases
   const filteredTestCases = useMemo(() => {
@@ -454,22 +454,22 @@ const TestComparison = () => {
       <div>
           <div style={toggleButtonStyle}>
             <div
-              onClick={() => handleGroupByChange('name')}
+              onClick={() => handleCompareByChange('name')}
               style={{
                 ...toggleOptionStyle,
-                ...(groupBy === 'name' ? activeToggleStyle : {})
+                ...(compareBy === 'name' ? activeToggleStyle : {})
               }}
             >
-              Group by Name
+              Compare by name
             </div>
             <div
-              onClick={() => handleGroupByChange('id')}
+              onClick={() => handleCompareByChange('id')}
               style={{
                 ...toggleOptionStyle,
-                ...(groupBy === 'id' ? activeToggleStyle : {})
+                ...(compareBy === 'id' ? activeToggleStyle : {})
               }}
             >
-              Group by ID
+              Compare by run index
             </div>
           </div>
         </div>
@@ -814,7 +814,7 @@ const TestComparison = () => {
                           <td key={`${testCase.id}-${run.fileName}`} style={{ ...tableCellStyle, padding: '0.4rem', width: '100px', textAlign: 'center' }}>
                             {detail ? (
                               <Link
-                                to={`/test/${discoveryName}/${run.fileName.replace('.json', '')}?testnumber=${groupBy === 'name' ?
+                                to={`/test/${discoveryName}/${run.fileName.replace('.json', '')}?testnumber=${compareBy === 'name' ?
                                   // When grouped by name, find the actual ID for this test case in this run
                                   Object.entries(testDetails[run.fileName].testCases)
                                     .find(([_, tc]) => tc.name === testCase.name)?.[0] || '' :
