@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { fetchDirectories, fetchTestDetail, fetchTestRuns } from '../services/api';
@@ -227,7 +227,7 @@ const TestComparison = () => {
 
       // Iterate through all test details to collect cases by name
       Object.entries(testDetails).forEach(([fileName, detail]) => {
-        Object.entries(detail.testCases).forEach(([id, testCase]) => {
+        Object.entries(detail.testCases).forEach(([, testCase]) => {
           const name = testCase.name;
 
           if (!testCasesByName.has(name)) {
@@ -874,7 +874,7 @@ const TestComparison = () => {
                                 to={`/test/${discoveryName}/${run.fileName.replace('.json', '')}?testnumber=${compareBy === 'name' ?
                                   // When grouped by name, find the actual ID for this test case in this run
                                   Object.entries(testDetails[run.fileName].testCases)
-                                    .find(([_, tc]) => tc.name === testCase.name)?.[0] || '' :
+                                    .find(([, tc]) => tc.name === testCase.name)?.[0] || '' :
                                   // When grouped by ID, use the ID directly
                                   testCase.id
                                 }`}
