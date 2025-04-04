@@ -824,6 +824,15 @@ const TestComparison = () => {
                           wordBreak: 'break-all'
                         }}>
                           <span title={testCase.name}>{testCase.name}</span>
+                          {compareBy === 'id' && (
+                            <span style={{
+                              fontSize: '0.75rem',
+                              color: isDarkMode ? '#94a3b8' : '#64748b',
+                              fontFamily: 'monospace'
+                            }}>
+                              Run index: {testCase.id}
+                            </span>
+                          )}
                         </div>
                       </td>
                       {selectedRuns.map((run) => {
