@@ -156,9 +156,18 @@ const TestComparison = () => {
         const aHasFailure = Object.values(a.details).some(detail => !detail.summaryResult.pass);
         const bHasFailure = Object.values(b.details).some(detail => !detail.summaryResult.pass);
 
-        // Status difference
+        // Count failures
+        const aFailCount = Object.values(a.details).filter(detail => !detail.summaryResult.pass).length;
+        const bFailCount = Object.values(b.details).filter(detail => !detail.summaryResult.pass).length;
+
+        // First sort by whether there are any failures (failures first)
         if (aHasFailure && !bHasFailure) return -1;
         if (!aHasFailure && bHasFailure) return 1;
+
+        // Then sort by failure count (more failures first)
+        if (aFailCount !== bFailCount) {
+          return bFailCount - aFailCount;
+        }
 
         // Result difference (some passed, some failed)
         const aHasDifference = !allSameResults(Object.values(a.details));
@@ -203,9 +212,18 @@ const TestComparison = () => {
         const aHasFailure = Object.values(a.details).some(detail => !detail.summaryResult.pass);
         const bHasFailure = Object.values(b.details).some(detail => !detail.summaryResult.pass);
 
-        // Status difference
+        // Count failures
+        const aFailCount = Object.values(a.details).filter(detail => !detail.summaryResult.pass).length;
+        const bFailCount = Object.values(b.details).filter(detail => !detail.summaryResult.pass).length;
+
+        // First sort by whether there are any failures (failures first)
         if (aHasFailure && !bHasFailure) return -1;
         if (!aHasFailure && bHasFailure) return 1;
+
+        // Then sort by failure count (more failures first)
+        if (aFailCount !== bFailCount) {
+          return bFailCount - aFailCount;
+        }
 
         // Result difference (some passed, some failed)
         const aHasDifference = !allSameResults(Object.values(a.details));
