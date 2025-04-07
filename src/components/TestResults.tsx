@@ -22,6 +22,25 @@ const TestResults = () => {
   const [clientFilter, setClientFilter] = useState('');
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [failedDirectories, setFailedDirectories] = useState<string[]>([]);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  // Use effect for responsive design
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Initial check
+    checkIsMobile();
+
+    // Add resize listener
+    window.addEventListener('resize', checkIsMobile);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', checkIsMobile);
+    };
+  }, []);
 
   const { data: directories, isLoading: isLoadingDirs } = useQuery<Directory[]>({
     queryKey: ['directories'],
@@ -238,7 +257,7 @@ const TestResults = () => {
 
   return (
     <div className="space-y-8" style={{
-      margin: '1.5rem',
+      margin: '0.5rem',
       backgroundColor: 'var(--bg-color)',
       color: 'var(--text-primary)'
     }}>
@@ -284,7 +303,6 @@ const TestResults = () => {
               border: isInactive ?
                 '1px dashed var(--warning-border, rgba(245, 158, 11, 0.8))' :
                 '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-
               opacity: isInactive ? 0.8 : 1,
               maxWidth: '1400px',
               margin: '20px auto'
@@ -295,8 +313,10 @@ const TestResults = () => {
                   padding: '0.75rem 1.25rem',
                   borderBottom: isCollapsed ? 'none' : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  justifyContent: isMobile ? 'flex-start' : 'space-between',
+                  alignItems: isMobile ? 'flex-start' : 'center',
+                  gap: isMobile ? '0.75rem' : '0',
                   cursor: 'pointer',
                   userSelect: 'none',
                   backgroundColor: isInactive ? 'var(--warning-bg, #fffbeb)' : 'transparent',
@@ -350,7 +370,8 @@ const TestResults = () => {
                           : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                         overflow: 'hidden',
                         width: '28px',
-                        height: '28px'
+                        height: '28px',
+                        flexShrink: 0
                       }}
                       dangerouslySetInnerHTML={{ __html: dirIcons[directory] }}
                     />
@@ -367,12 +388,20 @@ const TestResults = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? '0.5rem' : '1rem',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  width: isMobile ? '100%' : 'auto'
+                }}>
                   {recentRuns.length > 0 && (
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '1rem'
+                      gap: isMobile ? '0.5rem' : '1rem',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      width: isMobile ? '100%' : 'auto'
                     }}>
                       <div style={{
                         display: 'flex',
@@ -382,8 +411,12 @@ const TestResults = () => {
                         borderRadius: '0.375rem',
                         padding: '0 0.5rem',
                         overflow: 'hidden',
-                        width: '220px',
-                        flexShrink: 0
+                        width: isMobile ? '100%' : '220px',
+                        flexGrow: 0,
+                        flexShrink: 0,
+                        border: isInactive
+                          ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                          : 'none'
                       }}>
                         <div
                           style={{
@@ -439,9 +472,10 @@ const TestResults = () => {
                           : 'var(--badge-bg, #f3f4f6)',
                         borderRadius: '0.375rem',
                         padding: '0.25rem 0.5rem',
-                        width: '110px',
+                        width: isMobile ? '100%' : '110px',
                         justifyContent: 'center',
                         flexShrink: 0,
+                        flexGrow: 0,
                         border: isInactive
                           ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
                           : 'none'
@@ -483,9 +517,11 @@ const TestResults = () => {
                       : 'var(--badge-bg, #f3f4f6)',
                     borderRadius: '0.375rem',
                     padding: '0.25rem 0.5rem',
-                    width: '100px',
+                    width: isMobile ? '100%' : '100px',
                     justifyContent: 'center',
                     flexShrink: 0,
+                    flexGrow: 0,
+                    marginBottom: isMobile ? '0.5rem' : 0,
                     border: isInactive
                       ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
                       : 'none'
@@ -512,18 +548,25 @@ const TestResults = () => {
                         : 'var(--badge-bg, #f3f4f6)',
                       borderRadius: '0.375rem',
                       padding: '0.25rem 0.5rem',
-                      width: '180px',
+                      width: isMobile ? '100%' : '180px',
                       justifyContent: 'center',
                       flexShrink: 0,
+                      flexGrow: 0,
                       border: isInactive
                         ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
                         : 'none'
                     }}>
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                           style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem' }}>
+                           style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem', flexShrink: 0 }}>
                         <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clipRule="evenodd" />
                       </svg>
-                      <span style={{ fontWeight: '500' }}>
+                      <span style={{
+                        fontWeight: '500',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: 'calc(100% - 20px)'
+                      }}>
                         {isInactive
                           ? `Last: ${differenceInDays(new Date(), new Date(mostRecentRun.start))} days ago`
                           : `Last: ${format(new Date(mostRecentRun.start), 'MMM d, yyyy HH:mm')}`
@@ -531,8 +574,6 @@ const TestResults = () => {
                       </span>
                     </div>
                   )}
-
-
                 </div>
               </div>
 
@@ -558,7 +599,8 @@ const TestResults = () => {
                         color: isInactive
                           ? 'var(--warning-text, #b45309)'
                           : 'var(--text-primary, #111827)',
-                        margin: 0
+                        margin: 0,
+                        display: isMobile ? 'none' : 'block'
                       }}>Latest Test Results</h3>
 
                       <div style={{

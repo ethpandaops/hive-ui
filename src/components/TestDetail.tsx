@@ -260,7 +260,7 @@ const TestDetail = () => {
     <div style={containerStyle}>
       <Header />
 
-      <div style={{ padding: '0 1.5rem', flex: 1 }}>
+      <div style={{ margin: '0 0.5rem', flex: 1 }}>
         {isLoading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
             <div style={{
