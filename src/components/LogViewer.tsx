@@ -164,6 +164,7 @@ const LogViewer = () => {
       max-width: 100%;
       overflow-x: auto;
       border-radius: 8px;
+      border: 1px solid var(--border-color);
       margin: 16px 0;
     }
 
@@ -312,7 +313,7 @@ const LogViewer = () => {
     }}>
       <Header />
       <main style={{ flex: 1 }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '100%', margin: '0 auto', padding: '0 1rem' }}>
           {/* Breadcrumb navigation */}
           <Breadcrumb
             items={[
