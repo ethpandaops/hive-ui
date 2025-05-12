@@ -47,6 +47,7 @@ deploy: build
 		RCLONE_CONFIG_MYS3_REGION=$(S3_REGION) \
 		RCLONE_CONFIG_MYS3_PROVIDER=$(S3_PROVIDER) \
 		RCLONE_CONFIG_MYS3_ENDPOINT=$(S3_ENDPOINT) \
+		RCLONE_CONFIG_MYS3_NO_CHECK_BUCKET=true \
 		rclone copy dist mys3://$(S3_BUCKET) --no-traverse --progress
 
 clean:
