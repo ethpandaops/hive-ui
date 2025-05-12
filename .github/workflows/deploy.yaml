@@ -8,6 +8,8 @@ on:
         required: true
         default: 'master'
         type: string
+  schedule:
+    - cron: '0 0 */7 * *'  # Run at midnight every 7 days
 
 jobs:
   deploy:
@@ -17,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.inputs.version }}
+          ref: ${{ github.event.inputs.version || 'master' }}
 
       - name: Setup Node.js
         uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
@@ -33,7 +35,7 @@ jobs:
       - name: Install dependencies
         run: make setup
 
-      - name: Deploy ${{ github.event.inputs.version }}
+      - name: Deploy ${{ github.event.inputs.version || 'master' }}
         run: make deploy
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
