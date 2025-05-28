@@ -1,6 +1,11 @@
 [
   {
+    "name": "🌍 Generic",
+    "address": "https://hive.ethpandaops.io/generic/"
+  },
+  {
     "name": "fusaka-devnet-0",
     "address": "https://hive.ethpandaops.io/fusaka-devnet-0/"
   }
+
 ]
