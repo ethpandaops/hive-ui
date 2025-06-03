@@ -80,6 +80,20 @@ const router = createHashRouter([
     }
   },
   {
+    path: '/group/:name',
+    lazy: async () => {
+      try {
+        const module = await import('./components/GroupDetail') as unknown as { default: React.ComponentType<unknown> };
+        return { Component: module.default };
+      } catch (error) {
+        console.error('Failed to load GroupDetail component:', error);
+        return {
+          Component: () => <div>Group Detail Loading Error</div>
+        };
+      }
+    }
+  },
+  {
     path: '*',
     element: <NotFound />
   }

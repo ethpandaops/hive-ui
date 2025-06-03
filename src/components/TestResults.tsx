@@ -4,22 +4,10 @@ import { Directory, TestRun } from '../types';
 import { format, isValid, differenceInDays } from 'date-fns';
 import { useState, useEffect } from 'react';
 import * as jdenticon from 'jdenticon';
-import TestResultGroup from './TestResultGroup';
-import TestResultsTable from './TestResultsTable';
-import { useSearchParams } from 'react-router-dom';
-
-type GroupBy = 'test' | 'client';
-type SortBy = 'name' | 'coverage' | 'time';
-
+import { Link } from 'react-router-dom';
 
 const TestResults = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(searchParams.get('group'));
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
-  const [groupBy, setGroupBy] = useState<GroupBy>('test');
-  const [sortBy, setSortBy] = useState<SortBy>('name');
-  const [testNameFilter, setTestNameFilter] = useState('');
-  const [clientFilter, setClientFilter] = useState('');
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [failedDirectories, setFailedDirectories] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState<boolean>(false);
@@ -97,17 +85,6 @@ const TestResults = () => {
     enabled: !!directories && directories.length > 0,
   });
 
-  // Check if the expanded group from URL exists in the data
-  useEffect(() => {
-    if (testRunsByDir && expandedGroup) {
-      if (!testRunsByDir[expandedGroup]) {
-        // If the group from URL doesn't exist, clear it
-        setExpandedGroup(null);
-        setSearchParams({});
-      }
-    }
-  }, [testRunsByDir, expandedGroup, setSearchParams]);
-
   if (isLoadingDirs || isLoadingRuns) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -127,11 +104,6 @@ const TestResults = () => {
     );
   }
 
-  const formatDate = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
-  };
-
   // Get the most recent test run for a directory
   const getMostRecentRun = (runs: TestRun[]) => {
     if (runs.length === 0) return null;
@@ -144,115 +116,6 @@ const TestResults = () => {
     return [...runs]
       .sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime())
       .slice(0, count);
-  };
-
-  const toggleDirectory = (directory: string) => {
-    if (expandedGroup === directory) {
-      // If clicked on already expanded group, collapse it
-      setExpandedGroup(null);
-      setSearchParams({});
-    } else {
-      // Otherwise expand the clicked group and collapse others
-      setExpandedGroup(directory);
-      setSearchParams({ group: directory });
-    }
-  };
-
-  // Sort test runs based on the selected criteria
-  const sortTestRuns = (runs: TestRun[]): TestRun[] => {
-    return [...runs].sort((a, b) => {
-      if (sortBy === 'name') {
-        if (groupBy === 'test') {
-          // Sort by client name when grouped by test
-          return a.clients.join(',').localeCompare(b.clients.join(','));
-        } else {
-          // Sort by test name when grouped by client
-          return a.name.localeCompare(b.name);
-        }
-      } else if (sortBy === 'coverage') {
-        // Sort by pass ratio (descending)
-        const passRatioA = a.passes / a.ntests;
-        const passRatioB = b.passes / b.ntests;
-        return passRatioB - passRatioA;
-      } else if (sortBy === 'time') {
-        // Sort by start time (newest first)
-        return new Date(b.start).getTime() - new Date(a.start).getTime();
-      }
-      return 0;
-    });
-  };
-
-  // Update getGroupedRuns to include sorting
-  const getGroupedRuns = (runs: TestRun[], groupBy: GroupBy) => {
-    if (groupBy === 'test') {
-      // Group by test name, showing only the most recent run for each client combination
-      const testGroups: Record<string, TestRun[]> = {};
-
-      // First, organize runs by test name
-      runs.forEach(run => {
-        const testName = run.name;
-        if (!testGroups[testName]) {
-          testGroups[testName] = [];
-        }
-        testGroups[testName].push(run);
-      });
-
-      // Then filter each test group to keep only the most recent run for each client combination
-      const filteredGroups: Record<string, TestRun[]> = {};
-
-      Object.entries(testGroups).forEach(([testName, testRuns]) => {
-        const latestByClient: Record<string, TestRun> = {};
-
-        // Find the most recent run for each unique client combination
-        testRuns.forEach(run => {
-          const clientKey = run.clients.sort().join('+');
-
-          if (!latestByClient[clientKey] ||
-              new Date(run.start) > new Date(latestByClient[clientKey].start)) {
-            latestByClient[clientKey] = run;
-          }
-        });
-
-        // Add the filtered and sorted runs to the result
-        filteredGroups[testName] = sortTestRuns(Object.values(latestByClient));
-      });
-
-      return filteredGroups;
-    } else {
-      // Group by client combination, showing only the most recent run for each test
-      const clientGroups: Record<string, TestRun[]> = {};
-
-      // First, organize runs by client combination
-      runs.forEach(run => {
-        const clientKey = run.clients.sort().join('+');
-        if (!clientGroups[clientKey]) {
-          clientGroups[clientKey] = [];
-        }
-        clientGroups[clientKey].push(run);
-      });
-
-      // Then filter each client group to keep only the most recent run for each test
-      const filteredGroups: Record<string, TestRun[]> = {};
-
-      Object.entries(clientGroups).forEach(([clientKey, clientRuns]) => {
-        const latestByTest: Record<string, TestRun> = {};
-
-        // Find the most recent run for each unique test
-        clientRuns.forEach(run => {
-          const testName = run.name;
-
-          if (!latestByTest[testName] ||
-              new Date(run.start) > new Date(latestByTest[testName].start)) {
-            latestByTest[testName] = run;
-          }
-        });
-
-        // Add the filtered and sorted runs to the result
-        filteredGroups[clientKey] = sortTestRuns(Object.values(latestByTest));
-      });
-
-      return filteredGroups;
-    }
   };
 
   return (
@@ -285,7 +148,6 @@ const TestResults = () => {
         })
         .map(([directory, runs]) => {
           const mostRecentRun = getMostRecentRun(runs);
-          const isCollapsed = directory !== expandedGroup;
           const recentRuns = getRecentRuns(runs, 50);
 
           // Check if directory is inactive (latest run > 7 days ago)
@@ -307,11 +169,9 @@ const TestResults = () => {
               maxWidth: '1400px',
               margin: '20px auto'
             }}>
-              <div
-                onClick={() => toggleDirectory(directory)}
-                style={{
+              <Link to={`/group/${directory}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <div style={{
                   padding: '0.75rem 1.25rem',
-                  borderBottom: isCollapsed ? 'none' : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   display: 'flex',
                   flexDirection: isMobile ? 'column' : 'row',
                   justifyContent: isMobile ? 'flex-start' : 'space-between',
@@ -320,222 +180,188 @@ const TestResults = () => {
                   cursor: 'pointer',
                   userSelect: 'none',
                   backgroundColor: isInactive ? 'var(--warning-bg, #fffbeb)' : 'transparent',
-                  position: 'relative'
+                  position: 'relative',
+                  transition: 'background-color 0.2s ease'
                 }}
-              >
-                {isInactive && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '0',
-                    right: '0',
-                    backgroundColor: 'var(--warning-border, #f59e0b)',
-                    color: 'white',
-                    padding: '0.15rem 0.5rem',
-                    fontSize: '0.7rem',
-                    fontWeight: '500',
-                    borderBottomLeftRadius: '0.375rem'
-                  }}>
-                    INACTIVE
-                  </div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <div style={{
-                    marginRight: '0.75rem',
-                    transition: 'transform 0.2s ease',
-                    transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'
-                  }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                         style={{
-                           width: '1.25rem',
-                           height: '1.25rem',
-                           color: isInactive
-                             ? 'var(--warning-text, #b45309)'
-                             : 'var(--text-secondary, #6b7280)'
-                         }}>
-                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  {dirIcons[directory] && (
-                    <div
-                      style={{
-                        marginRight: '0.75rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'var(--badge-bg, #f3f4f6)',
-                        borderRadius: '0.375rem',
-                        padding: '0.25rem',
-                        border: isInactive
-                          ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                          : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                        overflow: 'hidden',
-                        width: '28px',
-                        height: '28px',
-                        flexShrink: 0
-                      }}
-                      dangerouslySetInnerHTML={{ __html: dirIcons[directory] }}
-                    />
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <h2 style={{
-                      fontSize: '1.25rem',
-                      fontWeight: '600',
-                      color: isInactive
-                        ? 'var(--warning-text, #b45309)'
-                        : 'var(--text-primary, #111827)',
-                      margin: 0
-                    }}>{directory}</h2>
-                  </div>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? '0.5rem' : '1rem',
-                  flexDirection: isMobile ? 'column' : 'row',
-                  width: isMobile ? '100%' : 'auto'
-                }}>
-                  {recentRuns.length > 0 && (
+                onMouseEnter={(e) => {
+                  if (!isInactive) {
+                    e.currentTarget.style.backgroundColor = 'var(--hover-bg, rgba(59, 130, 246, 0.05))';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = isInactive ? 'var(--warning-bg, #fffbeb)' : 'transparent';
+                }}
+                >
+                  {isInactive && (
                     <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: isMobile ? '0.5rem' : '1rem',
-                      flexDirection: isMobile ? 'column' : 'row',
-                      width: isMobile ? '100%' : 'auto'
+                      position: 'absolute',
+                      top: '0',
+                      right: '0',
+                      backgroundColor: 'var(--warning-border, #f59e0b)',
+                      color: 'white',
+                      padding: '0.15rem 0.5rem',
+                      fontSize: '0.7rem',
+                      fontWeight: '500',
+                      borderBottomLeftRadius: '0.375rem'
                     }}>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        height: '1.5rem',
-                        backgroundColor: 'var(--badge-bg, #f3f4f6)',
-                        borderRadius: '0.375rem',
-                        padding: '0 0.5rem',
-                        overflow: 'hidden',
-                        width: isMobile ? '100%' : '220px',
-                        flexGrow: 0,
-                        flexShrink: 0,
-                        border: isInactive
-                          ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                          : 'none'
-                      }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            height: '1rem',
-                            gap: '2px',
-                            alignItems: 'center',
-                            width: '100%'
-                          }}
-                          title="Last 50 test runs"
-                        >
-                          {recentRuns.map((run, index) => {
-                            let barColor;
-                            if (run.fails === 0) {
-                              barColor = 'var(--success-border, #10b981)';
-                            } else if (run.passes > 0 && run.passes / run.ntests > 0.5) {
-                              barColor = 'var(--warning-border, #f59e0b)';
-                            } else {
-                              barColor = 'var(--error-border, #ef4444)';
-                            }
-
-                            return (
-                              <div
-                                key={`${run.name}-${index}`}
-                                style={{
-                                  width: '4px',
-                                  height: '8px',
-                                  backgroundColor: barColor,
-                                  borderRadius: '1px'
-                                }}
-                                title={`${run.name}: ${
-                                  run.fails === 0
-                                    ? 'Success'
-                                    : (run.passes / run.ntests > 0.5 ? 'Partial Success' : 'Failed')
-                                } (${formatDate(run.start)})`}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Latest Test Stats */}
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        fontSize: '0.8rem',
-                        color: isInactive
-                          ? 'var(--warning-text, #b45309)'
-                          : 'var(--text-secondary, #4b5563)',
-                        backgroundColor: isInactive
-                          ? 'var(--warning-bg, #fffbeb)'
-                          : 'var(--badge-bg, #f3f4f6)',
-                        borderRadius: '0.375rem',
-                        padding: '0.25rem 0.5rem',
-                        width: isMobile ? '100%' : '110px',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        flexGrow: 0,
-                        border: isInactive
-                          ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                          : 'none'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                               style={{ width: '0.9rem', height: '0.9rem', color: 'var(--success-border, #10b981)' }}>
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                          <span style={{ fontWeight: '500' }}>{runs.filter(r => r.fails === 0).length}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                               style={{ width: '0.9rem', height: '0.9rem', color: 'var(--warning-border, #f59e0b)' }}>
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          <span style={{ fontWeight: '500' }}>{runs.filter(r => r.fails > 0 && r.passes / r.ntests > 0.5).length}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                               style={{ width: '0.9rem', height: '0.9rem', color: 'var(--error-border, #ef4444)' }}>
-                            <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                          </svg>
-                          <span style={{ fontWeight: '500' }}>{runs.filter(r => r.fails > 0 && r.passes / r.ntests <= 0.5).length}</span>
-                        </div>
-                      </div>
+                      INACTIVE
                     </div>
                   )}
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {dirIcons[directory] && (
+                      <div
+                        style={{
+                          marginRight: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'var(--badge-bg, #f3f4f6)',
+                          borderRadius: '0.375rem',
+                          padding: '0.25rem',
+                          border: isInactive
+                            ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                            : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                          overflow: 'hidden',
+                          width: '28px',
+                          height: '28px',
+                          flexShrink: 0
+                        }}
+                        dangerouslySetInnerHTML={{ __html: dirIcons[directory] }}
+                      />
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <h2 style={{
+                        fontSize: '1.25rem',
+                        fontWeight: '600',
+                        color: isInactive
+                          ? 'var(--warning-text, #b45309)'
+                          : 'var(--text-primary, #111827)',
+                        margin: 0
+                      }}>{directory}</h2>
+                    </div>
+                  </div>
 
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    fontSize: '0.8rem',
-                    color: isInactive
-                      ? 'var(--warning-text, #b45309)'
-                      : 'var(--text-secondary, #4b5563)',
-                    backgroundColor: isInactive
-                      ? 'var(--warning-bg, #fffbeb)'
-                      : 'var(--badge-bg, #f3f4f6)',
-                    borderRadius: '0.375rem',
-                    padding: '0.25rem 0.5rem',
-                    width: isMobile ? '100%' : '100px',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    flexGrow: 0,
-                    marginBottom: isMobile ? '0.5rem' : 0,
-                    border: isInactive
-                      ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                      : 'none'
+                    gap: isMobile ? '0.5rem' : '1rem',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    width: isMobile ? '100%' : 'auto'
                   }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                         style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem' }}>
-                      <path d="M5.5 3.5A1.5 1.5 0 0 1 7 2h2a1.5 1.5 0 0 1 1.5 1.5V5h2V3.5A1.5 1.5 0 0 1 14 2h2a1.5 1.5 0 0 1 1.5 1.5v2A1.5 1.5 0 0 1 16 7h-2a1.5 1.5 0 0 1-1.5-1.5V5h-2v1.5A1.5 1.5 0 0 1 9 8H7a1.5 1.5 0 0 1-1.5-1.5V5h-2V3.5Z" />
-                      <path fillRule="evenodd" d="M4 10a1 1 0 0 1 1-1h10a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1Z" clipRule="evenodd" />
-                      <path d="M5.5 13.5A1.5 1.5 0 0 1 7 12h2a1.5 1.5 0 0 1 1.5 1.5V15h2v-1.5A1.5 1.5 0 0 1 14 12h2a1.5 1.5 0 0 1 1.5 1.5v2a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5V15h-2v1.5A1.5 1.5 0 0 1 9 18H7a1.5 1.5 0 0 1-1.5-1.5v-2Z" />
-                    </svg>
-                    <span style={{ fontWeight: '500' }}>{runs.length} {runs.length === 1 ? 'Result' : 'Results'}</span>
-                  </div>
+                    {recentRuns.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? '0.5rem' : '1rem',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        width: isMobile ? '100%' : 'auto'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          height: '1.5rem',
+                          backgroundColor: 'var(--badge-bg, #f3f4f6)',
+                          borderRadius: '0.375rem',
+                          padding: '0 0.5rem',
+                          overflow: 'hidden',
+                          width: isMobile ? '100%' : '220px',
+                          flexGrow: 0,
+                          flexShrink: 0,
+                          border: isInactive
+                            ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                            : 'none'
+                        }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              height: '1rem',
+                              gap: '2px',
+                              alignItems: 'center',
+                              width: '100%'
+                            }}
+                            title="Last 50 test runs"
+                          >
+                            {recentRuns.map((run, index) => {
+                              let barColor;
+                              if (run.fails === 0) {
+                                barColor = 'var(--success-border, #10b981)';
+                              } else if (run.passes > 0 && run.passes / run.ntests > 0.5) {
+                                barColor = 'var(--warning-border, #f59e0b)';
+                              } else {
+                                barColor = 'var(--error-border, #ef4444)';
+                              }
 
-                  {mostRecentRun && (
+                              return (
+                                <div
+                                  key={`${run.name}-${index}`}
+                                  style={{
+                                    width: '4px',
+                                    height: '8px',
+                                    backgroundColor: barColor,
+                                    borderRadius: '1px'
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Success/Warning/Error counts */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          fontSize: '0.75rem',
+                          color: isInactive
+                            ? 'var(--warning-text, #b45309)'
+                            : 'var(--text-secondary, #6b7280)',
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            backgroundColor: 'var(--success-bg, #d1fae5)',
+                            borderRadius: '0.375rem',
+                            padding: '0.15rem 0.4rem',
+                            gap: '0.25rem'
+                          }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                                 style={{ width: '0.75rem', height: '0.75rem', color: 'var(--success-border, #10b981)' }}>
+                              <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.236 4.53L8.53 10.53a.75.75 0 0 0-1.06 1.061l2.03 2.03a.75.75 0 0 0 1.137-.089l3.857-5.401z" clipRule="evenodd" />
+                            </svg>
+                            <span style={{ fontWeight: '500' }}>{runs.filter(r => r.fails === 0).length}</span>
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            backgroundColor: 'var(--warning-bg, #fef3c7)',
+                            borderRadius: '0.375rem',
+                            padding: '0.15rem 0.4rem',
+                            gap: '0.25rem'
+                          }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                                 style={{ width: '0.75rem', height: '0.75rem', color: 'var(--warning-border, #f59e0b)' }}>
+                              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                            </svg>
+                            <span style={{ fontWeight: '500' }}>{runs.filter(r => r.fails > 0 && r.passes > 0 && r.passes / r.ntests > 0.5).length}</span>
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            backgroundColor: 'var(--error-bg, #fee2e2)',
+                            borderRadius: '0.375rem',
+                            padding: '0.15rem 0.4rem',
+                            gap: '0.25rem'
+                          }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                                 style={{ width: '0.75rem', height: '0.75rem', color: 'var(--error-border, #ef4444)' }}>
+                              <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                            <span style={{ fontWeight: '500' }}>{runs.filter(r => r.fails > 0 && r.passes / r.ntests <= 0.5).length}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -548,245 +374,66 @@ const TestResults = () => {
                         : 'var(--badge-bg, #f3f4f6)',
                       borderRadius: '0.375rem',
                       padding: '0.25rem 0.5rem',
-                      width: isMobile ? '100%' : '180px',
+                      width: isMobile ? '100%' : '100px',
                       justifyContent: 'center',
                       flexShrink: 0,
                       flexGrow: 0,
+                      marginBottom: isMobile ? '0.5rem' : 0,
                       border: isInactive
                         ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
                         : 'none'
                     }}>
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                           style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem', flexShrink: 0 }}>
-                        <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clipRule="evenodd" />
+                           style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem' }}>
+                        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 2h2a1.5 1.5 0 0 1 1.5 1.5V5h2V3.5A1.5 1.5 0 0 1 14 2h2a1.5 1.5 0 0 1 1.5 1.5v2A1.5 1.5 0 0 1 16 7h-2a1.5 1.5 0 0 1-1.5-1.5V5h-2v1.5A1.5 1.5 0 0 1 9 8H7a1.5 1.5 0 0 1-1.5-1.5V5h-2V3.5Z" />
+                        <path fillRule="evenodd" d="M4 10a1 1 0 0 1 1-1h10a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1Z" clipRule="evenodd" />
+                        <path d="M5.5 13.5A1.5 1.5 0 0 1 7 12h2a1.5 1.5 0 0 1 1.5 1.5V15h2v-1.5A1.5 1.5 0 0 1 14 12h2a1.5 1.5 0 0 1 1.5 1.5v2a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5V15h-2v1.5A1.5 1.5 0 0 1 9 18H7a1.5 1.5 0 0 1-1.5-1.5v-2Z" />
                       </svg>
-                      <span style={{
-                        fontWeight: '500',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: 'calc(100% - 20px)'
-                      }}>
-                        {isInactive
-                          ? `Last: ${differenceInDays(new Date(), new Date(mostRecentRun.start))} days ago`
-                          : `Last: ${format(new Date(mostRecentRun.start), 'MMM d, yyyy HH:mm')}`
-                        }
-                      </span>
+                      <span style={{ fontWeight: '500' }}>{runs.length} {runs.length === 1 ? 'Result' : 'Results'}</span>
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {!isCollapsed && (
-                <>
-                  {/* Summary Section */}
-                  <div style={{
-                    padding: '1rem 1.5rem',
-                    borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                    backgroundColor: isInactive
-                      ? 'var(--summary-bg, rgba(254, 252, 232, 0.5))'
-                      : 'var(--summary-bg, rgba(249, 250, 251, 0.5))'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '1rem',
-                    }}>
-                      <h3 style={{
-                        fontSize: '1rem',
-                        fontWeight: '600',
-                        color: isInactive
-                          ? 'var(--warning-text, #b45309)'
-                          : 'var(--text-primary, #111827)',
-                        margin: 0,
-                        display: isMobile ? 'none' : 'block'
-                      }}>Latest Test Results</h3>
-
+                    {mostRecentRun && (
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem'
+                        fontSize: '0.8rem',
+                        color: isInactive
+                          ? 'var(--warning-text, #b45309)'
+                          : 'var(--text-secondary, #4b5563)',
+                        backgroundColor: isInactive
+                          ? 'var(--warning-bg, #fffbeb)'
+                          : 'var(--badge-bg, #f3f4f6)',
+                        borderRadius: '0.375rem',
+                        padding: '0.25rem 0.5rem',
+                        width: isMobile ? '100%' : '180px',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        flexGrow: 0,
+                        border: isInactive
+                          ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                          : 'none'
                       }}>
-                        {/* Sort By Selector */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          backgroundColor: isInactive
-                            ? 'var(--warning-bg, rgba(255, 251, 235, 0.8))'
-                            : 'var(--badge-bg, #f3f4f6)',
-                          borderRadius: '0.375rem',
-                          padding: '0.25rem',
-                          border: isInactive
-                            ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                            : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                             style={{ width: '0.9rem', height: '0.9rem', marginRight: '0.4rem', flexShrink: 0 }}>
+                          <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clipRule="evenodd" />
+                        </svg>
+                        <span style={{
+                          fontWeight: '500',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: 'calc(100% - 20px)'
                         }}>
-                          <button
-                            onClick={() => setSortBy('name')}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              fontWeight: sortBy === 'name' ? '600' : '400',
-                              backgroundColor: sortBy === 'name'
-                                ? isInactive
-                                    ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
-                                    : 'var(--card-bg, white)'
-                                : 'transparent',
-                              border: 'none',
-                              borderRadius: '0.25rem',
-                              cursor: 'pointer',
-                              color: isInactive
-                                ? 'var(--warning-text, #b45309)'
-                                : 'var(--text-primary, #111827)',
-                              boxShadow: sortBy === 'name'
-                                ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                : 'none',
-                            }}
-                          >
-                            Sort by Name
-                          </button>
-                          <button
-                            onClick={() => setSortBy('coverage')}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              fontWeight: sortBy === 'coverage' ? '600' : '400',
-                              backgroundColor: sortBy === 'coverage'
-                                ? isInactive
-                                    ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
-                                    : 'var(--card-bg, white)'
-                                : 'transparent',
-                              border: 'none',
-                              borderRadius: '0.25rem',
-                              cursor: 'pointer',
-                              color: isInactive
-                                ? 'var(--warning-text, #b45309)'
-                                : 'var(--text-primary, #111827)',
-                              boxShadow: sortBy === 'coverage'
-                                ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                : 'none',
-                            }}
-                          >
-                            Sort by Coverage
-                          </button>
-                          <button
-                            onClick={() => setSortBy('time')}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              fontWeight: sortBy === 'time' ? '600' : '400',
-                              backgroundColor: sortBy === 'time'
-                                ? isInactive
-                                    ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
-                                    : 'var(--card-bg, white)'
-                                : 'transparent',
-                              border: 'none',
-                              borderRadius: '0.25rem',
-                              cursor: 'pointer',
-                              color: isInactive
-                                ? 'var(--warning-text, #b45309)'
-                                : 'var(--text-primary, #111827)',
-                              boxShadow: sortBy === 'time'
-                                ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                : 'none',
-                            }}
-                          >
-                            Sort by Time
-                          </button>
-                        </div>
-
-                        {/* Group By Selector */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          backgroundColor: isInactive
-                            ? 'var(--warning-bg, rgba(255, 251, 235, 0.8))'
-                            : 'var(--badge-bg, #f3f4f6)',
-                          borderRadius: '0.375rem',
-                          padding: '0.25rem',
-                          border: isInactive
-                            ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
-                            : '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                        }}>
-                          <button
-                            onClick={() => setGroupBy('test')}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              fontWeight: groupBy === 'test' ? '600' : '400',
-                              backgroundColor: groupBy === 'test'
-                                ? isInactive
-                                    ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
-                                    : 'var(--card-bg, white)'
-                                : 'transparent',
-                              border: 'none',
-                              borderRadius: '0.25rem',
-                              cursor: 'pointer',
-                              color: isInactive
-                                ? 'var(--warning-text, #b45309)'
-                                : 'var(--text-primary, #111827)',
-                              marginRight: '0.25rem',
-                              boxShadow: groupBy === 'test'
-                                ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                : 'none',
-                            }}
-                          >
-                            Group by Test
-                          </button>
-                          <button
-                            onClick={() => setGroupBy('client')}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              fontWeight: groupBy === 'client' ? '600' : '400',
-                              backgroundColor: groupBy === 'client'
-                                ? isInactive
-                                    ? 'var(--warning-bg-light, rgba(255, 251, 235, 1))'
-                                    : 'var(--card-bg, white)'
-                                : 'transparent',
-                              border: 'none',
-                              borderRadius: '0.25rem',
-                              cursor: 'pointer',
-                              color: isInactive
-                                ? 'var(--warning-text, #b45309)'
-                                : 'var(--text-primary, #111827)',
-                              boxShadow: groupBy === 'client'
-                                ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                : 'none',
-                            }}
-                          >
-                            Group by Client
-                          </button>
-                        </div>
+                          {isInactive
+                            ? `Last: ${differenceInDays(new Date(), new Date(mostRecentRun.start))} days ago`
+                            : `Last: ${format(new Date(mostRecentRun.start), 'MMM d, yyyy HH:mm')}`
+                          }
+                        </span>
                       </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {Object.entries(getGroupedRuns(runs, groupBy)).map(([groupKey, groupRuns]) => (
-                        <TestResultGroup
-                          key={groupKey}
-                          groupKey={groupKey}
-                          groupRuns={groupRuns}
-                          groupBy={groupBy}
-                          directory={directory}
-                          directoryAddress={directoryAddresses[directory]}
-                        />
-                      ))}
-                    </div>
+                    )}
                   </div>
-
-                  {/* Table Section */}
-                  <TestResultsTable
-                    runs={runs}
-                    directory={directory}
-                    directoryAddress={directoryAddresses[directory]}
-                    testNameFilter={testNameFilter}
-                    clientFilter={clientFilter}
-                    setTestNameFilter={setTestNameFilter}
-                    setClientFilter={setClientFilter}
-                  />
-                </>
-              )}
+                </div>
+              </Link>
             </div>
           );
         })}
