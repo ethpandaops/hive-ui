@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchDirectories, fetchTestRuns } from '../services/api';
 import { Directory, TestRun } from '../types';
-import { format, differenceInDays } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import { useState, useEffect } from 'react';
 import * as jdenticon from 'jdenticon';
 import { Link } from 'react-router-dom';
@@ -9,7 +9,7 @@ import GroupHeader from './GroupHeader';
 
 const Groups = () => {
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
-  const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
+  const [, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [failedDirectories, setFailedDirectories] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState<boolean>(false);
 
