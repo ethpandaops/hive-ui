@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createHashRouter, RouterProvider } from 'react-router-dom';
-import TestResults from './components/TestResults';
+import Groups from './components/Groups';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ThemeProvider from './contexts/theme-provider';
@@ -21,7 +21,7 @@ function MainApp() {
     }}>
       <Header />
       <main style={{ flex: 1 }}>
-        <TestResults />
+        <Groups />
       </main>
       <Footer />
     </div>
@@ -75,6 +75,20 @@ const router = createHashRouter([
         console.error('Failed to load LogViewer component:', error);
         return {
           Component: () => <div>Log Viewer Loading Error</div>
+        };
+      }
+    }
+  },
+  {
+    path: '/group/:name',
+    lazy: async () => {
+      try {
+        const module = await import('./components/GroupDetail') as unknown as { default: React.ComponentType<unknown> };
+        return { Component: module.default };
+      } catch (error) {
+        console.error('Failed to load GroupDetail component:', error);
+        return {
+          Component: () => <div>Group Detail Loading Error</div>
         };
       }
     }
