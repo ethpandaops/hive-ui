@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchDirectories, fetchTestRuns } from '../services/api';
 import { Directory, TestRun } from '../types';
-import { format, isValid, differenceInDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { useState, useEffect } from 'react';
 import * as jdenticon from 'jdenticon';
 import { Link } from 'react-router-dom';
 
 const Groups = () => {
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
-  const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
+  const [, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [failedDirectories, setFailedDirectories] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState<boolean>(false);
 
@@ -44,7 +44,7 @@ const Groups = () => {
       });
       setDirectoryAddresses(addresses);
     }
-  }, [directories]);
+  }, [directories, setDirectoryAddresses]);
 
   // Generate SVG icons for each directory
   useEffect(() => {
@@ -128,8 +128,8 @@ const Groups = () => {
         .filter(([directory]) => !failedDirectories.includes(directory))
         .sort((a, b) => {
           // Sort by inactive status (inactive directories at the end)
-          const [dirA, runsA] = a;
-          const [dirB, runsB] = b;
+          const [, runsA] = a;
+          const [, runsB] = b;
 
           const mostRecentRunA = getMostRecentRun(runsA);
           const mostRecentRunB = getMostRecentRun(runsB);
