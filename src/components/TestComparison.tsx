@@ -688,7 +688,7 @@ const TestComparison = () => {
             <Breadcrumb
               items={[
                 { label: 'Home', link: '/' },
-                { label: discoveryName || '', link: `/?group=${discoveryName}` },
+                { label: discoveryName || '', link: `/group/${discoveryName}` },
                 { label: 'Test Comparison', sublabel: `${selectedRuns.length} runs` }
               ]}
             />

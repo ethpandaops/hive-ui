@@ -318,7 +318,7 @@ const LogViewer = () => {
           <Breadcrumb
             items={[
               { label: 'Home', link: '/' },
-              { label: group, link: `/?group=${group}` },
+              { label: group, link: `/group/${group}` },
               { label: `Test Suite (${suiteId})`, link: `/test/${group}/${suiteId}` },
               { label: decodeURIComponent(logFile).split('/').pop() || 'Log' }
             ]}

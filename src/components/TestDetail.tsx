@@ -278,7 +278,7 @@ const TestDetail = () => {
             <Breadcrumb
               items={[
                 { label: 'Home', link: '/' },
-                { label: discoveryName || '', link: `/?group=${discoveryName}` },
+                { label: discoveryName || '', link: `/group/${discoveryName}` },
                 { label: testDetail.name, sublabel: suiteid }
               ]}
             />

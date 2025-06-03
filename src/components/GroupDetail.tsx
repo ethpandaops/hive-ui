@@ -3,7 +3,7 @@ import { fetchDirectories, fetchTestRuns } from '../services/api';
 import { Directory, TestRun } from '../types';
 import { format, isValid, differenceInDays } from 'date-fns';
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import * as jdenticon from 'jdenticon';
 import TestResultGroup from './TestResultGroup';
 import TestResultsTable from './TestResultsTable';
@@ -18,13 +18,63 @@ type SortBy = 'name' | 'coverage' | 'time';
 const GroupDetail = () => {
   const { isDarkMode } = useTheme();
   const { name } = useParams<{ name: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
-  const [groupBy, setGroupBy] = useState<GroupBy>('test');
-  const [sortBy, setSortBy] = useState<SortBy>('name');
+
+  // Initialize from URL params or defaults
+  const [groupBy, setGroupBy] = useState<GroupBy>(() => {
+    const urlGroupBy = searchParams.get('groupBy');
+    return (urlGroupBy === 'test' || urlGroupBy === 'client') ? urlGroupBy : 'test';
+  });
+
+  const [sortBy, setSortBy] = useState<SortBy>(() => {
+    const urlSortBy = searchParams.get('sort');
+    return (urlSortBy === 'name' || urlSortBy === 'coverage' || urlSortBy === 'time') ? urlSortBy : 'name';
+  });
+
   const [testNameFilter, setTestNameFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  // Function to update URL with current state
+  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy) => {
+    const params = new URLSearchParams(searchParams);
+
+    if (newSortBy) {
+      params.set('sort', newSortBy);
+    }
+    if (newGroupBy) {
+      params.set('groupBy', newGroupBy);
+    }
+
+    // Remove default values to keep URL clean
+    if (params.get('sort') === 'name') {
+      params.delete('sort');
+    }
+    if (params.get('groupBy') === 'test') {
+      params.delete('groupBy');
+    }
+
+    const newSearch = params.toString();
+    const newUrl = newSearch ? `?${newSearch}` : '';
+
+    navigate(`/group/${name}${newUrl}`, { replace: true });
+  };
+
+  // Update sort by and URL
+  const handleSortByChange = (newSortBy: SortBy) => {
+    setSortBy(newSortBy);
+    updateURL(newSortBy, groupBy);
+  };
+
+  // Update group by and URL
+  const handleGroupByChange = (newGroupBy: GroupBy) => {
+    setGroupBy(newGroupBy);
+    updateURL(sortBy, newGroupBy);
+  };
 
   // Use effect for responsive design
   useEffect(() => {
@@ -609,7 +659,7 @@ const GroupDetail = () => {
                       : `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
                   }}>
                     <button
-                      onClick={() => setSortBy('name')}
+                      onClick={() => handleSortByChange('name')}
                       style={{
                         padding: '0.25rem 0.5rem',
                         fontSize: '0.75rem',
@@ -633,7 +683,7 @@ const GroupDetail = () => {
                       Sort by Name
                     </button>
                     <button
-                      onClick={() => setSortBy('coverage')}
+                      onClick={() => handleSortByChange('coverage')}
                       style={{
                         padding: '0.25rem 0.5rem',
                         fontSize: '0.75rem',
@@ -657,7 +707,7 @@ const GroupDetail = () => {
                       Sort by Coverage
                     </button>
                     <button
-                      onClick={() => setSortBy('time')}
+                      onClick={() => handleSortByChange('time')}
                       style={{
                         padding: '0.25rem 0.5rem',
                         fontSize: '0.75rem',
@@ -696,7 +746,7 @@ const GroupDetail = () => {
                       : `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
                   }}>
                     <button
-                      onClick={() => setGroupBy('test')}
+                      onClick={() => handleGroupByChange('test')}
                       style={{
                         padding: '0.25rem 0.5rem',
                         fontSize: '0.75rem',
@@ -721,7 +771,7 @@ const GroupDetail = () => {
                       Group by Test
                     </button>
                     <button
-                      onClick={() => setGroupBy('client')}
+                      onClick={() => handleGroupByChange('client')}
                       style={{
                         padding: '0.25rem 0.5rem',
                         fontSize: '0.75rem',
