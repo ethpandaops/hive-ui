@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createHashRouter, RouterProvider } from 'react-router-dom';
-import TestResults from './components/TestResults';
+import Groups from './components/Groups';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ThemeProvider from './contexts/theme-provider';
@@ -21,7 +21,7 @@ function MainApp() {
     }}>
       <Header />
       <main style={{ flex: 1 }}>
-        <TestResults />
+        <Groups />
       </main>
       <Footer />
     </div>

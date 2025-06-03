@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import * as jdenticon from 'jdenticon';
 import { Link } from 'react-router-dom';
 
-const TestResults = () => {
+const Groups = () => {
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [failedDirectories, setFailedDirectories] = useState<string[]>([]);
@@ -143,8 +143,8 @@ const TestResults = () => {
           if (isInactiveA && !isInactiveB) return 1;
           if (!isInactiveA && isInactiveB) return -1;
 
-          // If both have same inactive status, sort alphabetically
-          return dirA.localeCompare(dirB);
+          // If both have same inactive status, maintain original order
+          return 0;
         })
         .map(([directory, runs]) => {
           const mostRecentRun = getMostRecentRun(runs);
@@ -441,4 +441,4 @@ const TestResults = () => {
   );
 };
 
-export default TestResults;
+export default Groups;
