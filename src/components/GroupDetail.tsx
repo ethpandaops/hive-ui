@@ -39,16 +39,28 @@ const GroupDetail = () => {
   const [clientFilter, setClientFilter] = useState('');
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  
+  // Initialize collapsed state from URL
+  const [isSummaryCollapsed, setIsSummaryCollapsed] = useState<boolean>(() => {
+    return searchParams.get('collapsed') === 'true';
+  });
 
   // Function to update URL with current state
-  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy) => {
+  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy, newCollapsed?: boolean) => {
     const params = new URLSearchParams(searchParams);
 
-    if (newSortBy) {
+    if (newSortBy !== undefined) {
       params.set('sort', newSortBy);
     }
-    if (newGroupBy) {
+    if (newGroupBy !== undefined) {
       params.set('groupBy', newGroupBy);
+    }
+    if (newCollapsed !== undefined) {
+      if (newCollapsed) {
+        params.set('collapsed', 'true');
+      } else {
+        params.delete('collapsed');
+      }
     }
 
     // Remove default values to keep URL clean
@@ -401,24 +413,55 @@ const GroupDetail = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '1rem',
+                marginBottom: isSummaryCollapsed ? '0' : '1rem',
               }}>
-                <h3 style={{
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  color: isInactive
-                    ? 'var(--warning-text, #b45309)'
-                    : (isDarkMode ? '#f8fafc' : 'var(--text-primary, #111827)'),
-                  margin: 0,
-                  display: isMobile ? 'none' : 'block'
-                }}>Latest Test Results</h3>
-
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem'
                 }}>
-                  {/* Sort By Selector */}
+                  <button
+                    onClick={() => {
+                      const newCollapsed = !isSummaryCollapsed;
+                      setIsSummaryCollapsed(newCollapsed);
+                      updateURL(sortBy, groupBy, newCollapsed);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '0.25rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: isDarkMode ? '#9ca3af' : '#6b7280',
+                      transition: 'transform 0.2s ease',
+                      transform: isSummaryCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'
+                    }}
+                    aria-label={isSummaryCollapsed ? 'Expand summary' : 'Collapse summary'}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  <h3 style={{
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    color: isInactive
+                      ? 'var(--warning-text, #b45309)'
+                      : (isDarkMode ? '#f8fafc' : 'var(--text-primary, #111827)'),
+                    margin: 0,
+                    display: isMobile ? 'none' : 'block'
+                  }}>Latest Test Results</h3>
+                </div>
+
+                {!isSummaryCollapsed && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    {/* Sort By Selector */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -568,10 +611,12 @@ const GroupDetail = () => {
                       Group by Client
                     </button>
                   </div>
-                </div>
+                  </div>
+                )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {!isSummaryCollapsed && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {Object.entries(getGroupedRuns(testRuns, groupBy)).map(([groupKey, groupRuns]) => (
                   <TestResultGroup
                     key={groupKey}
@@ -582,7 +627,8 @@ const GroupDetail = () => {
                     directoryAddress={directoryAddresses[name]}
                   />
                 ))}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Table Section */}
