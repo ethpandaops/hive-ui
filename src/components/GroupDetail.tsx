@@ -12,6 +12,7 @@ import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
 import Breadcrumb from './Breadcrumb';
 import GroupHeader from './GroupHeader';
+import WorkflowStatus from './WorkflowStatus';
 
 type GroupBy = 'test' | 'client';
 type SortBy = 'name' | 'coverage' | 'time';
@@ -400,6 +401,12 @@ const GroupDetail = () => {
                 showInactiveBadge={true}
               />
             </div>
+
+            {/* Workflow Status Section */}
+            <WorkflowStatus 
+              workflowUrls={directory.github_workflows} 
+              groupName={name} 
+            />
 
             {/* Summary Section */}
             <div style={{

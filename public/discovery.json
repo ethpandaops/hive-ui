@@ -1,7 +1,10 @@
 [
   {
     "name": "generic",
-    "address": "https://hive.ethpandaops.io/generic/"
+    "address": "https://hive.ethpandaops.io/generic/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/generic.yaml"
+    ]
   },
   {
     "name": "fusaka-devnet-1",

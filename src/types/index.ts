@@ -1,6 +1,7 @@
 export interface Directory {
   name: string;
   address: string;
+  github_workflows?: string[];
 }
 
 export interface TestRun {
@@ -56,4 +57,21 @@ export interface TestDetail {
   testCases: Record<string, TestCaseDetail>;
   simLog: string;
   testDetailsLog: string;
+}
+
+export interface GitHubWorkflowRun {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  run_number: number;
+  run_attempt: number;
+}
+
+export interface GitHubWorkflowStatus {
+  workflow_url: string;
+  runs: GitHubWorkflowRun[];
 }
