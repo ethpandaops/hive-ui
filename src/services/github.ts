@@ -1,4 +1,4 @@
-import { GitHubWorkflowRun } from '../types';
+import { GitHubWorkflowRun, GitHubJob } from '../types';
 
 // Parse workflow URL to extract owner, repo, and workflow file
 function parseWorkflowUrl(url: string): { owner: string; repo: string; workflow: string } | null {
@@ -10,6 +10,30 @@ function parseWorkflowUrl(url: string): { owner: string; repo: string; workflow:
     repo: match[2],
     workflow: match[3]
   };
+}
+
+// Fetch jobs for a specific workflow run
+async function fetchJobsForRun(owner: string, repo: string, runId: number): Promise<GitHubJob[]> {
+  try {
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`;
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+      }
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch jobs for run:', runId, response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.jobs || [];
+  } catch (error) {
+    console.error('Error fetching jobs for run:', runId, error);
+    return [];
+  }
 }
 
 // Fetch workflow runs for a specific workflow
@@ -38,7 +62,17 @@ export async function fetchWorkflowRuns(workflowUrl: string): Promise<GitHubWork
     }
 
     const data = await response.json();
-    return data.workflow_runs || [];
+    const runs: GitHubWorkflowRun[] = data.workflow_runs || [];
+    
+    // Fetch jobs for each run in parallel
+    const runsWithJobs = await Promise.all(
+      runs.map(async (run) => {
+        const jobs = await fetchJobsForRun(owner, repo, run.id);
+        return { ...run, jobs };
+      })
+    );
+    
+    return runsWithJobs;
   } catch (error) {
     console.error('Error fetching workflow runs:', error);
     return [];

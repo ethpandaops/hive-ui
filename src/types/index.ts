@@ -59,6 +59,27 @@ export interface TestDetail {
   testDetailsLog: string;
 }
 
+export interface GitHubJob {
+  id: number;
+  run_id: number;
+  name: string;
+  status: 'queued' | 'in_progress' | 'completed';
+  conclusion: 'success' | 'failure' | 'neutral' | 'cancelled' | 'skipped' | 'timed_out' | 'action_required' | null;
+  started_at: string | null;
+  completed_at: string | null;
+  html_url: string;
+  steps?: GitHubJobStep[];
+}
+
+export interface GitHubJobStep {
+  name: string;
+  status: 'queued' | 'in_progress' | 'completed';
+  conclusion: 'success' | 'failure' | 'neutral' | 'cancelled' | 'skipped' | 'timed_out' | 'action_required' | null;
+  number: number;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
 export interface GitHubWorkflowRun {
   id: number;
   name: string;
@@ -69,6 +90,7 @@ export interface GitHubWorkflowRun {
   updated_at: string;
   run_number: number;
   run_attempt: number;
+  jobs?: GitHubJob[];
 }
 
 export interface GitHubWorkflowStatus {

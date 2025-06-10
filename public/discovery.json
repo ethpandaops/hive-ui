@@ -8,10 +8,16 @@
   },
   {
     "name": "fusaka-devnet-1",
-    "address": "https://hive.ethpandaops.io/fusaka-devnet-1/"
+    "address": "https://hive.ethpandaops.io/fusaka-devnet-1/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/hive-devnet-1.yaml"
+    ]
   },
   {
     "name": "fusaka-devnet-0",
-    "address": "https://hive.ethpandaops.io/fusaka-devnet-0/"
+    "address": "https://hive.ethpandaops.io/fusaka-devnet-0/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/hive-devnet-0.yaml"
+    ]
   }
 ]
