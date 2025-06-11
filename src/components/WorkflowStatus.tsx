@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchAllRunningWorkflows, fetchMostRecentWorkflowRun } from '../services/github';
-import { GitHubWorkflowRun, GitHubJob } from '../types';
+import { GitHubWorkflowRun, GitHubJob, GitHubJobStep } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTheme } from '../contexts/useTheme';
 import { useState } from 'react';
@@ -9,6 +9,26 @@ interface WorkflowStatusProps {
   workflowUrls?: string[];
   groupName: string;
 }
+
+// Helper function to format duration in human-readable format
+const formatDuration = (seconds: number): string => {
+  if (seconds < 60) {
+    return `${seconds}s`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    
+    let result = `${hours}h`;
+    if (minutes > 0) result += ` ${minutes}m`;
+    if (remainingSeconds > 0) result += ` ${remainingSeconds}s`;
+    return result;
+  }
+};
 
 // Helper function to get workflow run status icon
 const getWorkflowStatusIcon = (run: GitHubWorkflowRun) => {
@@ -100,9 +120,63 @@ const getJobStatusIcon = (job: GitHubJob) => {
   return null;
 };
 
+// Helper function to get step status icon
+const getStepStatusIcon = (step: GitHubJobStep) => {
+  if (step.status === 'queued') {
+    return (
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7" stroke="#94a3b8" strokeWidth="2" fill="none" />
+      </svg>
+    );
+  } else if (step.status === 'in_progress') {
+    return (
+      <div style={{
+        border: `2px solid rgba(251, 146, 60, 0.3)`,
+        borderTopColor: '#fb923c',
+        borderRadius: '50%',
+        width: '10px',
+        height: '10px',
+        animation: 'spin 1s linear infinite'
+      }}></div>
+    );
+  } else if (step.status === 'completed') {
+    if (step.conclusion === 'success') {
+      return (
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" fill="#10b981" />
+          <path d="M5 8l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    } else if (step.conclusion === 'failure') {
+      return (
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" fill="#ef4444" />
+          <path d="M5 5l6 6M11 5l-6 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    } else if (step.conclusion === 'cancelled') {
+      return (
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" fill="#6b7280" />
+          <rect x="5" y="5" width="6" height="6" fill="white" />
+        </svg>
+      );
+    } else if (step.conclusion === 'skipped') {
+      return (
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" fill="#94a3b8" />
+          <path d="M6 4l4 4-4 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    }
+  }
+  return null;
+};
+
 const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName }) => {
   const { isDarkMode } = useTheme();
   const [expandedRuns, setExpandedRuns] = useState<Set<number>>(new Set());
+  const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
 
   const { data: runningWorkflows = [], isLoading } = useQuery<GitHubWorkflowRun[]>({
     queryKey: ['workflows', groupName],
@@ -336,53 +410,151 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
                     Jobs ({run.jobs.length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                    {run.jobs.map((job) => (
-                      <a
-                        key={job.id}
-                        href={job.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '0.375rem 0.5rem',
+                    {run.jobs.map((job) => {
+                      const isJobExpanded = expandedJobs.has(job.id);
+                      const hasSteps = job.steps && job.steps.length > 0;
+                      
+                      return (
+                        <div key={job.id} style={{
                           backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.8)',
                           borderRadius: '0.25rem',
                           border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.3)' : 'rgba(229, 231, 235, 0.6)'}`,
-                          textDecoration: 'none',
-                          color: 'inherit',
-                          fontSize: '0.75rem',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode 
-                            ? 'rgba(51, 65, 85, 0.8)' 
-                            : 'rgba(255, 255, 255, 1)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = isDarkMode 
-                            ? 'rgba(30, 41, 59, 0.5)' 
-                            : 'rgba(255, 255, 255, 0.8)';
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                          {getJobStatusIcon(job)}
-                          <span style={{ color: isDarkMode ? '#e2e8f0' : '#334155' }}>
-                            {job.name}
-                          </span>
+                          overflow: 'hidden'
+                        }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.375rem 0.5rem',
+                              fontSize: '0.75rem',
+                              cursor: hasSteps ? 'pointer' : 'default',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onClick={() => {
+                              if (hasSteps) {
+                                const newExpanded = new Set(expandedJobs);
+                                if (isJobExpanded) {
+                                  newExpanded.delete(job.id);
+                                } else {
+                                  newExpanded.add(job.id);
+                                }
+                                setExpandedJobs(newExpanded);
+                              }
+                            }}
+                            onMouseEnter={(e) => {
+                              if (hasSteps) {
+                                e.currentTarget.style.backgroundColor = isDarkMode 
+                                  ? 'rgba(51, 65, 85, 0.8)' 
+                                  : 'rgba(255, 255, 255, 1)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                              {getJobStatusIcon(job)}
+                              <a
+                                href={job.html_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: isDarkMode ? '#e2e8f0' : '#334155',
+                                  textDecoration: 'none'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {job.name}
+                              </a>
+                              {hasSteps && (
+                                <span style={{
+                                  fontSize: '0.65rem',
+                                  color: isDarkMode ? '#64748b' : '#94a3b8',
+                                  marginLeft: '0.25rem'
+                                }}>
+                                  ({job.steps.length} steps)
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              {job.started_at && (
+                                <span style={{ 
+                                  fontSize: '0.7rem', 
+                                  color: isDarkMode ? '#94a3b8' : '#64748b' 
+                                }}>
+                                  {formatDistanceToNow(new Date(job.started_at), { addSuffix: true })}
+                                </span>
+                              )}
+                              {hasSteps && (
+                                <svg 
+                                  width="12" 
+                                  height="12" 
+                                  viewBox="0 0 16 16" 
+                                  fill="none"
+                                  style={{
+                                    transform: isJobExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.2s ease'
+                                  }}
+                                >
+                                  <path 
+                                    d="M6 3l5 5-5 5" 
+                                    stroke={isDarkMode ? '#94a3b8' : '#64748b'} 
+                                    strokeWidth="2" 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {isJobExpanded && hasSteps && (
+                            <div style={{
+                              padding: '0.5rem',
+                              borderTop: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.3)' : 'rgba(229, 231, 235, 0.6)'}`,
+                              backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.2)' : 'rgba(249, 250, 251, 0.3)'
+                            }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                {job.steps.map((step) => (
+                                  <div
+                                    key={step.number}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '0.25rem 0.375rem',
+                                      backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.3)' : 'rgba(255, 255, 255, 0.6)',
+                                      borderRadius: '0.2rem',
+                                      fontSize: '0.7rem'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                      {getStepStatusIcon(step)}
+                                      <span style={{
+                                        color: isDarkMode ? '#cbd5e1' : '#475569',
+                                        fontFamily: 'monospace'
+                                      }}>
+                                        {step.number}. {step.name}
+                                      </span>
+                                    </div>
+                                    {step.started_at && step.completed_at && (
+                                      <span style={{
+                                        fontSize: '0.65rem',
+                                        color: isDarkMode ? '#64748b' : '#94a3b8',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {formatDuration(Math.round((new Date(step.completed_at).getTime() - new Date(step.started_at).getTime()) / 1000))}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        {job.started_at && (
-                          <span style={{ 
-                            fontSize: '0.7rem', 
-                            color: isDarkMode ? '#94a3b8' : '#64748b' 
-                          }}>
-                            {formatDistanceToNow(new Date(job.started_at), { addSuffix: true })}
-                          </span>
-                        )}
-                      </a>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
