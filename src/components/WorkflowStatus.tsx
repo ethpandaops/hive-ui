@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchAllRunningWorkflows, fetchMostRecentWorkflowRun } from '../services/github';
+import { fetchAllRunningWorkflows, fetchMostRecentWorkflowRun, GitHubRateLimitError } from '../services/github';
 import { GitHubWorkflowRun, GitHubJob, GitHubJobStep } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTheme } from '../contexts/useTheme';
@@ -178,24 +178,78 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
   const [expandedRuns, setExpandedRuns] = useState<Set<number>>(new Set());
   const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
 
-  const { data: runningWorkflows = [], isLoading } = useQuery<GitHubWorkflowRun[]>({
+  const { data: runningWorkflows = [], isLoading, error: runningError } = useQuery<GitHubWorkflowRun[]>({
     queryKey: ['workflows', groupName],
     queryFn: () => fetchAllRunningWorkflows(workflowUrls || []),
     enabled: !!workflowUrls && workflowUrls.length > 0,
     refetchInterval: 30000, // Refetch every 30 seconds
     staleTime: 20000, // Consider data stale after 20 seconds
+    retry: (failureCount, error) => {
+      // Don't retry if it's a rate limit error
+      if (error instanceof GitHubRateLimitError) return false;
+      return failureCount < 3;
+    }
   });
 
-  const { data: mostRecentRun } = useQuery<GitHubWorkflowRun | null>({
+  const { data: mostRecentRun, error: recentError } = useQuery<GitHubWorkflowRun | null>({
     queryKey: ['mostRecentWorkflow', groupName],
     queryFn: () => fetchMostRecentWorkflowRun(workflowUrls || []),
     enabled: !!workflowUrls && workflowUrls.length > 0 && runningWorkflows.length === 0,
     refetchInterval: 60000, // Refetch every minute
     staleTime: 50000, // Consider data stale after 50 seconds
+    retry: (failureCount, error) => {
+      // Don't retry if it's a rate limit error
+      if (error instanceof GitHubRateLimitError) return false;
+      return failureCount < 3;
+    }
   });
 
   if (!workflowUrls || workflowUrls.length === 0) {
     return null;
+  }
+
+  // Check for rate limit errors first, before checking loading state
+  const error = runningError || recentError;
+  if (error instanceof GitHubRateLimitError) {
+    return (
+      <div style={{
+        padding: '0.75rem 1.25rem',
+        borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+        backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.5rem'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ 
+            width: '1.25rem', 
+            height: '1.25rem',
+            color: '#ef4444'
+          }}>
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <span style={{ 
+            fontSize: '0.875rem', 
+            fontWeight: '600',
+            color: isDarkMode ? '#f87171' : '#dc2626' 
+          }}>
+            GitHub API Rate Limit Exceeded
+          </span>
+        </div>
+        <p style={{
+          fontSize: '0.8125rem',
+          color: isDarkMode ? '#94a3b8' : '#64748b',
+          margin: 0,
+          lineHeight: '1.4'
+        }}>
+          Unable to fetch workflow status. Please add a GitHub personal access token in the settings menu to increase your API rate limit.
+        </p>
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -473,7 +527,7 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
                                   color: isDarkMode ? '#64748b' : '#94a3b8',
                                   marginLeft: '0.25rem'
                                 }}>
-                                  ({job.steps.length} steps)
+                                  ({job.steps?.length || 0} steps)
                                 </span>
                               )}
                             </div>
@@ -516,7 +570,7 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
                               backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.2)' : 'rgba(249, 250, 251, 0.3)'
                             }}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                {job.steps.map((step) => (
+                                {job.steps!.map((step) => (
                                   <div
                                     key={step.number}
                                     style={{
@@ -576,6 +630,15 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
           100% {
             opacity: 1;
             transform: scale(1);
+          }
+        }
+        
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
           }
         }
       `}</style>

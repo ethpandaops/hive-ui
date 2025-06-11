@@ -1,5 +1,27 @@
 import { GitHubWorkflowRun, GitHubJob } from '../types';
 
+// Get GitHub API headers with token if available
+function getGitHubHeaders(): HeadersInit {
+  const headers: HeadersInit = {
+    'Accept': 'application/vnd.github.v3+json',
+  };
+  
+  const token = localStorage.getItem('githubApiToken');
+  if (token) {
+    headers['Authorization'] = `token ${token}`;
+  }
+  
+  return headers;
+}
+
+// Handle rate limit errors
+export class GitHubRateLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GitHubRateLimitError';
+  }
+}
+
 // Parse workflow URL to extract owner, repo, and workflow file
 function parseWorkflowUrl(url: string): { owner: string; repo: string; workflow: string } | null {
   const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/.*\/workflows\/(.+)$/);
@@ -18,12 +40,17 @@ async function fetchJobsForRun(owner: string, repo: string, runId: number): Prom
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`;
     
     const response = await fetch(apiUrl, {
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-      }
+      headers: getGitHubHeaders()
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
+        // Check if it's a rate limit error (either header is '0' or response indicates rate limiting)
+        if (rateLimitRemaining === '0' || response.headers.get('X-RateLimit-Limit')) {
+          throw new GitHubRateLimitError('GitHub API rate limit exceeded. Please add a personal access token in settings.');
+        }
+      }
       console.error('Failed to fetch jobs for run:', runId, response.status);
       return [];
     }
@@ -31,6 +58,10 @@ async function fetchJobsForRun(owner: string, repo: string, runId: number): Prom
     const data = await response.json();
     return data.jobs || [];
   } catch (error) {
+    // Re-throw rate limit errors so they can be handled by the UI
+    if (error instanceof GitHubRateLimitError) {
+      throw error;
+    }
     console.error('Error fetching jobs for run:', runId, error);
     return [];
   }
@@ -54,12 +85,17 @@ export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: b
       : `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=10&status=in_progress`;
     
     const response = await fetch(apiUrl, {
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-      }
+      headers: getGitHubHeaders()
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
+        // Check if it's a rate limit error (either header is '0' or response indicates rate limiting)
+        if (rateLimitRemaining === '0' || response.headers.get('X-RateLimit-Limit')) {
+          throw new GitHubRateLimitError('GitHub API rate limit exceeded. Please add a personal access token in settings.');
+        }
+      }
       console.error('Failed to fetch workflow runs:', response.status);
       return [];
     }
@@ -77,6 +113,10 @@ export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: b
     
     return runsWithJobs;
   } catch (error) {
+    // Re-throw rate limit errors so they can be handled by the UI
+    if (error instanceof GitHubRateLimitError) {
+      throw error;
+    }
     console.error('Error fetching workflow runs:', error);
     return [];
   }
