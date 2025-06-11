@@ -5,12 +5,12 @@ function getGitHubHeaders(): HeadersInit {
   const headers: HeadersInit = {
     'Accept': 'application/vnd.github.v3+json',
   };
-  
+
   const token = localStorage.getItem('githubApiToken');
   if (token) {
     headers['Authorization'] = `token ${token}`;
   }
-  
+
   return headers;
 }
 
@@ -26,7 +26,7 @@ export class GitHubRateLimitError extends Error {
 function parseWorkflowUrl(url: string): { owner: string; repo: string; workflow: string } | null {
   const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/.*\/workflows\/(.+)$/);
   if (!match) return null;
-  
+
   return {
     owner: match[1],
     repo: match[2],
@@ -38,7 +38,7 @@ function parseWorkflowUrl(url: string): { owner: string; repo: string; workflow:
 async function fetchJobsForRun(owner: string, repo: string, runId: number): Promise<GitHubJob[]> {
   try {
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`;
-    
+
     const response = await fetch(apiUrl, {
       headers: getGitHubHeaders()
     });
@@ -76,14 +76,14 @@ export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: b
   }
 
   const { owner, repo, workflow } = parsed;
-  
+
   try {
     // GitHub API endpoint for workflow runs
     // If includeCompleted is true, fetch all recent runs, otherwise only in_progress
-    const apiUrl = includeCompleted 
-      ? `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=5`
-      : `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=10&status=in_progress`;
-    
+    const apiUrl = includeCompleted
+      ? `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=1`
+      : `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=1&status=in_progress`;
+
     const response = await fetch(apiUrl, {
       headers: getGitHubHeaders()
     });
@@ -102,7 +102,7 @@ export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: b
 
     const data = await response.json();
     const runs: GitHubWorkflowRun[] = data.workflow_runs || [];
-    
+
     // Fetch jobs for each run in parallel
     const runsWithJobs = await Promise.all(
       runs.map(async (run) => {
@@ -110,7 +110,7 @@ export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: b
         return { ...run, jobs };
       })
     );
-    
+
     return runsWithJobs;
   } catch (error) {
     // Re-throw rate limit errors so they can be handled by the UI
@@ -126,16 +126,16 @@ export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: b
 export async function fetchAllRunningWorkflows(workflowUrls: string[]): Promise<GitHubWorkflowRun[]> {
   const promises = workflowUrls.map(url => fetchWorkflowRuns(url));
   const results = await Promise.allSettled(promises);
-  
+
   const allRuns: GitHubWorkflowRun[] = [];
   results.forEach((result) => {
     if (result.status === 'fulfilled') {
       allRuns.push(...result.value);
     }
   });
-  
+
   // Sort by created_at descending (newest first)
-  return allRuns.sort((a, b) => 
+  return allRuns.sort((a, b) =>
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 }
@@ -144,18 +144,18 @@ export async function fetchAllRunningWorkflows(workflowUrls: string[]): Promise<
 export async function fetchMostRecentWorkflowRun(workflowUrls: string[]): Promise<GitHubWorkflowRun | null> {
   const promises = workflowUrls.map(url => fetchWorkflowRuns(url, true));
   const results = await Promise.allSettled(promises);
-  
+
   const allRuns: GitHubWorkflowRun[] = [];
   results.forEach((result) => {
     if (result.status === 'fulfilled') {
       allRuns.push(...result.value);
     }
   });
-  
+
   // Sort by created_at descending (newest first) and return the most recent
-  const sorted = allRuns.sort((a, b) => 
+  const sorted = allRuns.sort((a, b) =>
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
-  
+
   return sorted.length > 0 ? sorted[0] : null;
 }

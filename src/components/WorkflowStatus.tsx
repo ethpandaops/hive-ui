@@ -10,6 +10,15 @@ interface WorkflowStatusProps {
   groupName: string;
 }
 
+// Helper function to get job sort priority (lower number = higher priority)
+const getJobSortPriority = (job: GitHubJob): number => {
+  if (job.status === 'in_progress') return 1;
+  if (job.status === 'queued') return 2;
+  if (job.status === 'completed' && job.conclusion === 'failure') return 3;
+  if (job.status === 'completed') return 4;
+  return 5; // fallback for any other status
+};
+
 // Helper function to format duration in human-readable format
 const formatDuration = (seconds: number): string => {
   if (seconds < 60) {
@@ -464,7 +473,9 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
                     Jobs ({run.jobs.length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                    {run.jobs.map((job) => {
+                    {run.jobs
+                      .sort((a, b) => getJobSortPriority(a) - getJobSortPriority(b))
+                      .map((job) => {
                       const isJobExpanded = expandedJobs.has(job.id);
                       const hasSteps = job.steps && job.steps.length > 0;
                       
