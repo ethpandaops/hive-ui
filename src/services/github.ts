@@ -2,7 +2,7 @@ import { GitHubWorkflowRun, GitHubJob } from '../types';
 
 // Parse workflow URL to extract owner, repo, and workflow file
 function parseWorkflowUrl(url: string): { owner: string; repo: string; workflow: string } | null {
-  const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/.*\/workflows\/(.+)$/);
+  const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/.*\/workflows\/(.+)$/);
   if (!match) return null;
   
   return {
@@ -37,7 +37,7 @@ async function fetchJobsForRun(owner: string, repo: string, runId: number): Prom
 }
 
 // Fetch workflow runs for a specific workflow
-export async function fetchWorkflowRuns(workflowUrl: string): Promise<GitHubWorkflowRun[]> {
+export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: boolean = false): Promise<GitHubWorkflowRun[]> {
   const parsed = parseWorkflowUrl(workflowUrl);
   if (!parsed) {
     console.error('Invalid workflow URL:', workflowUrl);
@@ -48,7 +48,10 @@ export async function fetchWorkflowRuns(workflowUrl: string): Promise<GitHubWork
   
   try {
     // GitHub API endpoint for workflow runs
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=10&status=in_progress`;
+    // If includeCompleted is true, fetch all recent runs, otherwise only in_progress
+    const apiUrl = includeCompleted 
+      ? `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=5`
+      : `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=10&status=in_progress`;
     
     const response = await fetch(apiUrl, {
       headers: {
@@ -95,4 +98,24 @@ export async function fetchAllRunningWorkflows(workflowUrls: string[]): Promise<
   return allRuns.sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
+}
+
+// Fetch most recent workflow run (including completed ones)
+export async function fetchMostRecentWorkflowRun(workflowUrls: string[]): Promise<GitHubWorkflowRun | null> {
+  const promises = workflowUrls.map(url => fetchWorkflowRuns(url, true));
+  const results = await Promise.allSettled(promises);
+  
+  const allRuns: GitHubWorkflowRun[] = [];
+  results.forEach((result) => {
+    if (result.status === 'fulfilled') {
+      allRuns.push(...result.value);
+    }
+  });
+  
+  // Sort by created_at descending (newest first) and return the most recent
+  const sorted = allRuns.sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  
+  return sorted.length > 0 ? sorted[0] : null;
 }

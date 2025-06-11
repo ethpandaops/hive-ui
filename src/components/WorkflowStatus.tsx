@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchAllRunningWorkflows } from '../services/github';
+import { fetchAllRunningWorkflows, fetchMostRecentWorkflowRun } from '../services/github';
 import { GitHubWorkflowRun, GitHubJob } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTheme } from '../contexts/useTheme';
@@ -9,6 +9,50 @@ interface WorkflowStatusProps {
   workflowUrls?: string[];
   groupName: string;
 }
+
+// Helper function to get workflow run status icon
+const getWorkflowStatusIcon = (run: GitHubWorkflowRun) => {
+  if (run.status === 'queued') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7" stroke="#94a3b8" strokeWidth="2" fill="none" />
+      </svg>
+    );
+  } else if (run.status === 'in_progress') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path 
+          d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm3.5 7.5h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0v3h3a.5.5 0 0 1 0 1z" 
+          fill="#f59e0b"
+        />
+      </svg>
+    );
+  } else if (run.status === 'completed') {
+    if (run.conclusion === 'success') {
+      return (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" fill="#10b981" />
+          <path d="M5 8l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    } else if (run.conclusion === 'failure') {
+      return (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" fill="#ef4444" />
+          <path d="M5 5l6 6M11 5l-6 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    } else if (run.conclusion === 'cancelled') {
+      return (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" fill="#6b7280" />
+          <rect x="5" y="5" width="6" height="6" fill="white" />
+        </svg>
+      );
+    }
+  }
+  return null;
+};
 
 // Helper function to get job status icon
 const getJobStatusIcon = (job: GitHubJob) => {
@@ -68,6 +112,14 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
     staleTime: 20000, // Consider data stale after 20 seconds
   });
 
+  const { data: mostRecentRun } = useQuery<GitHubWorkflowRun | null>({
+    queryKey: ['mostRecentWorkflow', groupName],
+    queryFn: () => fetchMostRecentWorkflowRun(workflowUrls || []),
+    enabled: !!workflowUrls && workflowUrls.length > 0 && runningWorkflows.length === 0,
+    refetchInterval: 60000, // Refetch every minute
+    staleTime: 50000, // Consider data stale after 50 seconds
+  });
+
   if (!workflowUrls || workflowUrls.length === 0) {
     return null;
   }
@@ -97,9 +149,13 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
     );
   }
 
-  if (runningWorkflows.length === 0) {
+  if (runningWorkflows.length === 0 && !mostRecentRun) {
     return null;
   }
+
+  // Display either running workflows or the most recent run
+  const workflowsToDisplay = runningWorkflows.length > 0 ? runningWorkflows : (mostRecentRun ? [mostRecentRun] : []);
+  const isShowingActive = runningWorkflows.length > 0;
 
   return (
     <div style={{
@@ -113,20 +169,29 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
         gap: '0.5rem',
         marginBottom: '0.5rem'
       }}>
-        <div style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: '#f59e0b',
-          animation: 'pulse 2s infinite'
-        }}></div>
+        {isShowingActive ? (
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: '#f59e0b',
+            animation: 'pulse 2s infinite'
+          }}></div>
+        ) : (
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: '#6b7280'
+          }}></div>
+        )}
         <h4 style={{
           fontSize: '0.875rem',
           fontWeight: '600',
           color: isDarkMode ? '#f8fafc' : '#1e293b',
           margin: 0
         }}>
-          Active CI Jobs ({runningWorkflows.length})
+          {isShowingActive ? `Active CI Jobs (${runningWorkflows.length})` : 'Most Recent CI Run'}
         </h4>
       </div>
 
@@ -135,7 +200,7 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
         flexDirection: 'column',
         gap: '0.5rem'
       }}>
-        {runningWorkflows.map((run) => {
+        {workflowsToDisplay.map((run) => {
           const isExpanded = expandedRuns.has(run.id);
           const runningJobs = run.jobs?.filter(job => job.status === 'in_progress' || job.status === 'queued') || [];
           const completedJobs = run.jobs?.filter(job => job.status === 'completed') || [];
@@ -176,12 +241,7 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path 
-                      d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm3.5 7.5h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0v3h3a.5.5 0 0 1 0 1z" 
-                      fill="#f59e0b"
-                    />
-                  </svg>
+                  {getWorkflowStatusIcon(run)}
                   <div style={{ flex: 1 }}>
                     <div style={{
                       display: 'flex',
