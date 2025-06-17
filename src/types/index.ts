@@ -49,6 +49,20 @@ export interface TestCaseDetail {
   clientInfo: Record<string, TestClientInfo>;
 }
 
+export interface RunMetadata {
+  hiveCommand: string[];
+  hiveVersion: {
+    commit: string;
+    commitDate: string;
+    branch: string;
+    dirty: boolean;
+  };
+  clientConfig?: {
+    filePath: string;
+    content: unknown;
+  };
+}
+
 export interface TestDetail {
   id: number;
   name: string;
@@ -57,6 +71,7 @@ export interface TestDetail {
   testCases: Record<string, TestCaseDetail>;
   simLog: string;
   testDetailsLog: string;
+  runMetadata?: RunMetadata;
 }
 
 export interface GitHubJob {

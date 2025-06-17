@@ -9,6 +9,9 @@ import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
 import Breadcrumb from './Breadcrumb';
 import TestDetailsTable from './TestDetailsTable';
+import CommandDisplay from './CommandDisplay';
+import ConfigViewer from './ConfigViewer';
+import VersionInfo from './VersionInfo';
 
 const TestDetail = () => {
   const { isDarkMode } = useTheme();
@@ -1277,6 +1280,79 @@ const TestDetail = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Detailed Metadata Section */}
+              {testDetail.runMetadata && (
+                <div style={{
+                  ...cardStyle,
+                  marginBottom: '1.5rem',
+                  backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.8)' : '#ffffff'
+                }}>
+                  <h3 style={sectionTitleStyle}>Detailed Test Run Information</h3>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+                    gap: '1.5rem',
+                    marginTop: '1rem'
+                  }}>
+                    {/* Command Section */}
+                    <div>
+                      <h4 style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: isDarkMode ? '#e5e7eb' : '#374151',
+                        marginBottom: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        Hive Command
+                      </h4>
+                      <CommandDisplay command={testDetail.runMetadata.hiveCommand} />
+                    </div>
+
+                    {/* Version Section */}
+                    <div>
+                      <h4 style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: isDarkMode ? '#e5e7eb' : '#374151',
+                        marginBottom: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        Hive Version
+                      </h4>
+                      <VersionInfo hiveVersion={testDetail.runMetadata.hiveVersion} />
+                    </div>
+                  </div>
+
+                  {/* Client Configuration Section */}
+                  {testDetail.runMetadata.clientConfig && (
+                    <div style={{ marginTop: '1.5rem' }}>
+                      <h4 style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: isDarkMode ? '#e5e7eb' : '#374151',
+                        marginBottom: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        Client Configuration
+                      </h4>
+                      <ConfigViewer
+                        config={testDetail.runMetadata.clientConfig.content}
+                        filePath={testDetail.runMetadata.clientConfig.filePath}
+                        isDarkMode={isDarkMode}
+                        collapsed={true}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Use the new TestDetailsTable component */}
               <TestDetailsTable
