@@ -1323,7 +1323,7 @@ const TestDetail = () => {
                         alignItems: 'center',
                         gap: '0.5rem'
                       }}>
-                        Version Information
+                        Hive Version
                       </h4>
                       <VersionInfo hiveVersion={testDetail.runMetadata.hiveVersion} />
                     </div>
@@ -1341,7 +1341,6 @@ const TestDetail = () => {
                         alignItems: 'center',
                         gap: '0.5rem'
                       }}>
-                        <span>📄</span>
                         Client Configuration
                       </h4>
                       <ConfigViewer

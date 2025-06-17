@@ -8,10 +8,10 @@ interface VersionInfoProps {
   className?: string;
 }
 
-const VersionInfo: React.FC<VersionInfoProps> = ({ 
-  hiveVersion, 
-  compact = false, 
-  className = '' 
+const VersionInfo: React.FC<VersionInfoProps> = ({
+  hiveVersion,
+  compact = false,
+  className = ''
 }) => {
   const shortCommit = formatCommitHash(hiveVersion.commit);
   const formattedDate = formatCommitDate(hiveVersion.commitDate);
@@ -60,19 +60,6 @@ const VersionInfo: React.FC<VersionInfoProps> = ({
         alignItems: 'center',
         gap: '0.5rem'
       }}>
-        <span style={{ 
-          fontSize: '1rem',
-          color: 'var(--text-secondary, #6b7280)'
-        }}>
-          🔧
-        </span>
-        <span style={{
-          fontSize: '0.875rem',
-          fontWeight: '500',
-          color: 'var(--text-primary, #111827)'
-        }}>
-          Hive Version
-        </span>
       </div>
 
       <div style={{
@@ -83,7 +70,7 @@ const VersionInfo: React.FC<VersionInfoProps> = ({
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-secondary, #6b7280)' }}>Branch:</span>
-          <span style={{ 
+          <span style={{
             color: 'var(--text-primary, #111827)',
             fontWeight: '500',
             fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
@@ -95,7 +82,7 @@ const VersionInfo: React.FC<VersionInfoProps> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-secondary, #6b7280)' }}>Commit:</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ 
+            <span style={{
               color: 'var(--text-primary, #111827)',
               fontWeight: '500',
               fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
@@ -120,7 +107,7 @@ const VersionInfo: React.FC<VersionInfoProps> = ({
 
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-secondary, #6b7280)' }}>Date:</span>
-          <span style={{ 
+          <span style={{
             color: 'var(--text-primary, #111827)',
             fontWeight: '400'
           }}>

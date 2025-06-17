@@ -12,18 +12,18 @@ interface ConfigViewerProps {
   collapsed?: boolean;
 }
 
-const ConfigViewer: React.FC<ConfigViewerProps> = ({ 
-  config, 
-  filePath, 
-  isDarkMode, 
+const ConfigViewer: React.FC<ConfigViewerProps> = ({
+  config,
+  filePath,
+  isDarkMode,
   className = '',
-  collapsed = false 
+  collapsed = false
 }) => {
   const [copied, setCopied] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(collapsed);
   const [highlightedCode, setHighlightedCode] = useState('');
   const { codeClassName } = usePrismTheme(isDarkMode);
-  
+
   const { isValid, formatted } = parseConfigContent(config);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ const ConfigViewer: React.FC<ConfigViewerProps> = ({
   const handleCopy = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const success = await copyToClipboard(formatted);
     if (success) {
       setCopied(true);
@@ -95,18 +95,18 @@ const ConfigViewer: React.FC<ConfigViewerProps> = ({
           >
             {isCollapsed ? '▶' : '▼'}
           </button>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-            <span style={{ 
-              fontSize: '0.875rem', 
+            <span style={{
+              fontSize: '0.875rem',
               fontWeight: '500',
               color: 'var(--text-primary, #111827)'
             }}>
-              Client Configuration
+              Client File
             </span>
             {filePath && (
-              <span style={{ 
-                fontSize: '0.75rem', 
+              <span style={{
+                fontSize: '0.75rem',
                 color: 'var(--text-secondary, #6b7280)',
                 fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
               }}>
@@ -168,7 +168,6 @@ const ConfigViewer: React.FC<ConfigViewerProps> = ({
         >
           {isValid ? (
             <pre
-              className={codeClassName}
               style={{
                 margin: 0,
                 padding: 0,
@@ -176,10 +175,15 @@ const ConfigViewer: React.FC<ConfigViewerProps> = ({
                 lineHeight: '1.5',
                 fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                 whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word'
+                wordBreak: 'break-word',
+                background: 'none'
               }}
-              dangerouslySetInnerHTML={{ __html: highlightedCode }}
-            />
+            >
+              <code
+                className={codeClassName}
+                dangerouslySetInnerHTML={{ __html: highlightedCode }}
+              />
+            </pre>
           ) : (
             <div style={{
               color: 'var(--error-text, #b91c1c)',

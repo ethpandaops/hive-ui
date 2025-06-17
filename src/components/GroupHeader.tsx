@@ -171,7 +171,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                 backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'var(--success-bg, #d1fae5)',
                 borderRadius: '0.375rem',
                 padding: '0.15rem 0.4rem',
-                gap: '0.25rem'
+                gap: '0.25rem',
+                width: '50px'
               }}>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                      style={{ width: '0.75rem', height: '0.75rem', color: 'var(--success-border, #10b981)' }}>
@@ -185,7 +186,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                 backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'var(--warning-bg, #fef3c7)',
                 borderRadius: '0.375rem',
                 padding: '0.15rem 0.4rem',
-                gap: '0.25rem'
+                gap: '0.25rem',
+                width: '50px'
               }}>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                      style={{ width: '0.75rem', height: '0.75rem', color: 'var(--warning-border, #f59e0b)' }}>
@@ -199,7 +201,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                 backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'var(--error-bg, #fee2e2)',
                 borderRadius: '0.375rem',
                 padding: '0.15rem 0.4rem',
-                gap: '0.25rem'
+                gap: '0.25rem',
+                width: '50px'
               }}>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                      style={{ width: '0.75rem', height: '0.75rem', color: 'var(--error-border, #ef4444)' }}>
