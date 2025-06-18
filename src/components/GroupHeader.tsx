@@ -226,7 +226,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
             : (isDarkMode ? '#334155' : 'var(--badge-bg, #f3f4f6)'),
           borderRadius: '0.375rem',
           padding: '0.25rem 0.5rem',
-          width: isMobile ? '100%' : '100px',
+          width: isMobile ? '100%' : '110px',
           justifyContent: 'center',
           flexShrink: 0,
           flexGrow: 0,
