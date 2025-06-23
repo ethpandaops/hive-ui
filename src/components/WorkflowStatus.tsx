@@ -14,9 +14,10 @@ interface WorkflowStatusProps {
 const getJobSortPriority = (job: GitHubJob): number => {
   if (job.status === 'in_progress') return 1;
   if (job.status === 'queued') return 2;
-  if (job.status === 'completed' && job.conclusion === 'failure') return 3;
-  if (job.status === 'completed') return 4;
-  return 5; // fallback for any other status
+  if (job.status === 'completed' && job.conclusion === 'cancelled') return 3;
+  if (job.status === 'completed' && job.conclusion === 'failure') return 4;
+  if (job.status === 'completed') return 5;
+  return 6; // fallback for any other status
 };
 
 // Helper function to format duration in human-readable format
