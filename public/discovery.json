@@ -8,7 +8,7 @@
   },
   {
     "name": "fusaka-devnet-2",
-    "address": "https://hive.ethpandaops.io/fusaka-devnet-1/",
+    "address": "https://hive.ethpandaops.io/fusaka-devnet-2/",
     "github_workflows": [
       "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/hive-devnet-2.yaml"
     ]
