@@ -783,11 +783,6 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                           }}>
                             {/* Description and Timing section */}
                             <div style={{ overflow: 'hidden', width: '100%' }}>
-                              <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Description</h4>
-                              <div style={{ ...lightTextStyle, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
-                                {sanitizeAndRenderHTML(testCase.description)}
-                              </div>
-
                               {/* Log excerpt section */}
                               {testCase.summaryResult.log && testDetail.testDetailsLog && (
                                 <>
@@ -809,6 +804,10 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                                   </div>
                                 </>
                               )}
+                              <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Description</h4>
+                              <div style={{ ...lightTextStyle, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
+                                {sanitizeAndRenderHTML(testCase.description)}
+                              </div>
 
                               <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Timing</h4>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
