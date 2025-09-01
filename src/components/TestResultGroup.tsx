@@ -12,8 +12,24 @@ interface TestResultGroupProps {
 }
 
 const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory, directoryAddress }: TestResultGroupProps) => {
+  // Create a sanitized class name from the groupKey.
+  // - Replace non-alphanumeric chars with hyphens
+  // - Replace multiple hyphens with single
+  // - Remove leading/trailing hyphens
+  const sanitizedClassName = groupKey
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  const uniqueClassName = groupBy === 'client'
+    ? `client-box-${sanitizedClassName}`
+    : `test-box-${sanitizedClassName}`;
+
   return (
-    <div style={{
+    <div
+      className={uniqueClassName}
+      style={{
       backgroundColor: 'var(--card-bg, #ffffff)',
       borderRadius: '0.5rem',
       overflow: 'hidden',
