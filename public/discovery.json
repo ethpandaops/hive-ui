@@ -7,24 +7,10 @@
     ]
   },
   {
-    "name": "fusaka-devnet-5",
-    "address": "https://hive.ethpandaops.io/fusaka-devnet-5/",
+    "name": "fusaka",
+    "address": "https://hive.ethpandaops.io/fusaka/",
     "github_workflows": [
-      "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/hive-devnet-5.yaml"
-    ]
-  },
-  {
-    "name": "fusaka-devnet-3",
-    "address": "https://hive.ethpandaops.io/fusaka-devnet-3/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/hive-devnet-3.yaml"
-    ]
-  },
-  {
-    "name": "fusaka-devnet-2",
-    "address": "https://hive.ethpandaops.io/fusaka-devnet-2/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/hive-devnet-2.yaml"
+      "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/fusaka.yaml"
     ]
   }
 ]
