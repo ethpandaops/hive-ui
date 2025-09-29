@@ -37,7 +37,7 @@ function parseWorkflowUrl(url: string): { owner: string; repo: string; workflow:
 // Fetch jobs for a specific workflow run
 async function fetchJobsForRun(owner: string, repo: string, runId: number): Promise<GitHubJob[]> {
   try {
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`;
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs?per_page=100`;
 
     const response = await fetch(apiUrl, {
       headers: getGitHubHeaders()
