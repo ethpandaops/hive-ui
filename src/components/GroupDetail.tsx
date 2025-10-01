@@ -417,6 +417,19 @@ const GroupDetail = () => {
     updateURL(sortBy, groupBy, isSummaryCollapsed, []);
   };
 
+  // Handle client selection change from table
+  const handleClientSelectChange = (clients: string[]) => {
+    setSelectedClients(clients);
+
+    // Automatically switch to "Group by Client" when filtering by clients
+    const newGroupBy = clients.length > 0 ? 'client' : groupBy;
+    if (newGroupBy !== groupBy) {
+      setGroupBy(newGroupBy);
+    }
+
+    updateURL(sortBy, newGroupBy, isSummaryCollapsed, clients);
+  };
+
   return (
     <div style={containerStyle}>
       <Header />
@@ -854,6 +867,7 @@ const GroupDetail = () => {
               selectedClients={selectedClients}
               setTestNameFilter={setTestNameFilter}
               setClientFilter={setClientFilter}
+              onClientSelectChange={handleClientSelectChange}
             />
           </div>
         </div>

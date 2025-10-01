@@ -16,6 +16,7 @@ interface TestResultsTableProps {
   selectedClients?: string[];
   setTestNameFilter: (value: string) => void;
   setClientFilter: (value: string) => void;
+  onClientSelectChange?: (clients: string[]) => void;
 }
 
 const TestResultsTable = ({
@@ -25,16 +26,28 @@ const TestResultsTable = ({
   clientFilter,
   selectedClients = [],
   setTestNameFilter,
-  setClientFilter
+  setClientFilter,
+  onClientSelectChange
 }: TestResultsTableProps) => {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [testNameSelectFilter, setTestNameSelectFilter] = useState<string>('all');
+
+  // Get all unique test names
+  const uniqueTestNames = Array.from(new Set(runs.map(run => run.name))).sort();
+
+  // Get all unique clients
+  const uniqueClients = Array.from(new Set(runs.flatMap(run => run.clients))).sort();
 
   // Apply filters to the test runs
   const filteredRuns = runs.filter(run => {
     const testName = run.name;
     const matchesTestName = testNameFilter === '' ||
       testName.toLowerCase().includes(testNameFilter.toLowerCase());
+
+    // Apply test name select filter
+    const matchesTestNameSelect = testNameSelectFilter === 'all' || run.name === testNameSelectFilter;
 
     const clients = run.clients.join(', ');
     const matchesClient = clientFilter === '' ||
@@ -44,7 +57,18 @@ const TestResultsTable = ({
     const matchesSelectedClients = selectedClients.length === 0 ||
       run.clients.some(client => selectedClients.includes(client));
 
-    return matchesTestName && matchesClient && matchesSelectedClients;
+    // Apply status filter
+    const passRate = run.ntests > 0 ? (run.passes / run.ntests) * 100 : 0;
+    let matchesStatus = true;
+    if (statusFilter === 'pass') {
+      matchesStatus = passRate === 100;
+    } else if (statusFilter === 'fail') {
+      matchesStatus = passRate < 100 && passRate > 0;
+    } else if (statusFilter === 'error') {
+      matchesStatus = passRate === 0;
+    }
+
+    return matchesTestName && matchesTestNameSelect && matchesClient && matchesSelectedClients && matchesStatus;
   });
 
   // Sort runs by start time (newest first) for each test/client combination
@@ -161,45 +185,6 @@ const TestResultsTable = ({
 
   return (
     <div style={{ overflow: 'auto' }}>
-      <div style={{
-        padding: '1rem',
-        display: 'flex',
-        gap: '1rem',
-        backgroundColor: 'var(--summary-bg, rgba(249, 250, 251, 0.5))'
-      }}>
-        <div style={{ flex: 1 }}>
-          <input
-            type="text"
-            placeholder="Filter by test name..."
-            value={testNameFilter}
-            onChange={(e) => setTestNameFilter(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem',
-              borderRadius: '0.375rem',
-              border: '1px solid var(--border-color)',
-              backgroundColor: 'var(--card-bg)',
-              color: 'var(--text-primary)'
-            }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <input
-            type="text"
-            placeholder="Filter by client..."
-            value={clientFilter}
-            onChange={(e) => setClientFilter(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem',
-              borderRadius: '0.375rem',
-              border: '1px solid var(--border-color)',
-              backgroundColor: 'var(--card-bg)',
-              color: 'var(--text-primary)'
-            }}
-          />
-        </div>
-      </div>
       <table style={{
         minWidth: '100%',
         borderCollapse: 'separate',
@@ -218,13 +203,13 @@ const TestResultsTable = ({
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                verticalAlign: 'top'
               }}
             >
               Date {renderSortIndicator('date')}
             </th>
             <th
-              onClick={() => handleSort('name')}
               style={{
                 padding: '0.75rem 1rem',
                 textAlign: 'left',
@@ -234,10 +219,39 @@ const TestResultsTable = ({
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                cursor: 'pointer'
+                verticalAlign: 'top'
               }}
             >
-              Test Name {renderSortIndicator('name')}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                <span
+                  onClick={() => handleSort('name')}
+                  style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Test Name {renderSortIndicator('name')}
+                </span>
+                <select
+                  value={testNameSelectFilter}
+                  onChange={(e) => setTestNameSelectFilter(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    fontSize: '0.7rem',
+                    borderRadius: '0.25rem',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--card-bg)',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                >
+                  <option value="all">All Tests</option>
+                  {uniqueTestNames.map(testName => (
+                    <option key={testName} value={testName}>
+                      {testName}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </th>
             <th style={{
               padding: '0.75rem 1rem',
@@ -248,9 +262,42 @@ const TestResultsTable = ({
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '30%'
+              width: '25%',
+              verticalAlign: 'top'
             }}>
-              Clients
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                <span style={{ whiteSpace: 'nowrap' }}>Clients</span>
+                <select
+                  value={selectedClients.length === 1 ? selectedClients[0] : selectedClients.length === 0 ? 'all' : 'multiple'}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (onClientSelectChange) {
+                      onClientSelectChange(value === 'all' ? [] : [value]);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    fontSize: '0.7rem',
+                    borderRadius: '0.25rem',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--card-bg)',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                >
+                  <option value="all">All Clients</option>
+                  {selectedClients.length > 1 && (
+                    <option value="multiple">Multiple Selected ({selectedClients.length})</option>
+                  )}
+                  {uniqueClients.map(client => (
+                    <option key={client} value={client}>
+                      {client}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </th>
             <th
               onClick={() => handleSort('total')}
@@ -264,7 +311,8 @@ const TestResultsTable = ({
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                 width: '50px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                verticalAlign: 'top'
               }}
             >
               Total {renderSortIndicator('total')}
@@ -281,7 +329,8 @@ const TestResultsTable = ({
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                 width: '50px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                verticalAlign: 'top'
               }}
             >
               Pass {renderSortIndicator('pass')}
@@ -298,7 +347,8 @@ const TestResultsTable = ({
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                 width: '50px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                verticalAlign: 'top'
               }}
             >
               Fail {renderSortIndicator('fail')}
@@ -312,12 +362,12 @@ const TestResultsTable = ({
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '50px'
+              width: '50px',
+              verticalAlign: 'top'
             }}>
               Diff
             </th>
             <th
-              onClick={() => handleSort('status')}
               style={{
                 padding: '0.5rem',
                 textAlign: 'right',
@@ -327,11 +377,38 @@ const TestResultsTable = ({
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                width: '80px',
-                cursor: 'pointer'
+                width: '100px',
+                verticalAlign: 'top'
               }}
             >
-              Status {renderSortIndicator('status')}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                <span
+                  onClick={() => handleSort('status')}
+                  style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Status {renderSortIndicator('status')}
+                </span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    fontSize: '0.7rem',
+                    borderRadius: '0.25rem',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--card-bg)',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                >
+                  <option value="all">All</option>
+                  <option value="pass">Pass</option>
+                  <option value="fail">Fail</option>
+                  <option value="error">Error</option>
+                </select>
+              </div>
             </th>
             <th style={{
               padding: '0.5rem',
@@ -342,7 +419,8 @@ const TestResultsTable = ({
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '70px'
+              width: '70px',
+              verticalAlign: 'top'
             }}>
               Details
             </th>
