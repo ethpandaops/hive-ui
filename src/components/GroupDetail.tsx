@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchDirectories, fetchTestRuns } from '../services/api';
 import { Directory, TestRun } from '../types';
 import { differenceInDays } from 'date-fns';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import * as jdenticon from 'jdenticon';
 import TestResultGroup from './TestResultGroup';
@@ -38,16 +38,30 @@ const GroupDetail = () => {
 
   const [testNameFilter, setTestNameFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
+  const [selectedClients, setSelectedClients] = useState<string[]>(() => {
+    const urlClients = searchParams.get('clients');
+    if (urlClients) {
+      return urlClients.split(',').filter(c => c.length > 0);
+    }
+    // Load from localStorage if no URL param
+    const favoriteClients = localStorage.getItem('favoriteClients');
+    return favoriteClients ? JSON.parse(favoriteClients) : [];
+  });
+  const [favoriteClients, setFavoriteClients] = useState<string[]>(() => {
+    const stored = localStorage.getItem('favoriteClients');
+    return stored ? JSON.parse(stored) : [];
+  });
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [isMobile, setIsMobile] = useState<boolean>(false);
-  
+  const clientFilterRef = useRef<HTMLDetailsElement>(null);
+
   // Initialize collapsed state from URL
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState<boolean>(() => {
     return searchParams.get('collapsed') === 'true';
   });
 
   // Function to update URL with current state
-  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy, newCollapsed?: boolean) => {
+  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy, newCollapsed?: boolean, newClients?: string[]) => {
     const params = new URLSearchParams(searchParams);
 
     if (newSortBy !== undefined) {
@@ -61,6 +75,13 @@ const GroupDetail = () => {
         params.set('collapsed', 'true');
       } else {
         params.delete('collapsed');
+      }
+    }
+    if (newClients !== undefined) {
+      if (newClients.length > 0) {
+        params.set('clients', newClients.join(','));
+      } else {
+        params.delete('clients');
       }
     }
 
@@ -105,6 +126,32 @@ const GroupDetail = () => {
     // Cleanup
     return () => {
       window.removeEventListener('resize', checkIsMobile);
+    };
+  }, []);
+
+  // Update URL with favorites if they were loaded from localStorage
+  useEffect(() => {
+    const urlClients = searchParams.get('clients');
+    if (!urlClients && selectedClients.length > 0) {
+      // Favorites were loaded, update URL
+      const newGroupBy = 'client'; // Auto-switch to group by client when favorites are loaded
+      setGroupBy(newGroupBy);
+      updateURL(sortBy, newGroupBy, isSummaryCollapsed, selectedClients);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Close client filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (clientFilterRef.current && !clientFilterRef.current.contains(event.target as Node)) {
+        clientFilterRef.current.removeAttribute('open');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -242,6 +289,23 @@ const GroupDetail = () => {
       .slice(0, count);
   };
 
+  // Extract all unique clients from test runs
+  const getAllClients = (runs: TestRun[]): string[] => {
+    const clientSet = new Set<string>();
+    runs.forEach(run => {
+      run.clients.forEach(client => clientSet.add(client));
+    });
+    return Array.from(clientSet).sort();
+  };
+
+  // Filter test runs by selected clients
+  const filterByClients = (runs: TestRun[]): TestRun[] => {
+    if (selectedClients.length === 0) return runs;
+    return runs.filter(run =>
+      run.clients.some(client => selectedClients.includes(client))
+    );
+  };
+
   // Sort test runs based on the selected criteria
   const sortTestRuns = (runs: TestRun[]): TestRun[] => {
     return [...runs].sort((a, b) => {
@@ -347,6 +411,58 @@ const GroupDetail = () => {
     differenceInDays(new Date(), new Date(mostRecentRun.start)) > 7 :
     false;
 
+  // Get all available clients
+  const availableClients = getAllClients(testRuns);
+
+  // Toggle client selection
+  const toggleClient = (client: string) => {
+    setSelectedClients(prev => {
+      const newClients = prev.includes(client)
+        ? prev.filter(c => c !== client)
+        : [...prev, client];
+
+      // Automatically switch to "Group by Client" when filtering by clients
+      const newGroupBy = newClients.length > 0 ? 'client' : groupBy;
+      if (newGroupBy !== groupBy) {
+        setGroupBy(newGroupBy);
+      }
+
+      updateURL(sortBy, newGroupBy, isSummaryCollapsed, newClients);
+      return newClients;
+    });
+  };
+
+  // Clear all client filters
+  const clearClientFilters = () => {
+    setSelectedClients([]);
+    updateURL(sortBy, groupBy, isSummaryCollapsed, []);
+  };
+
+  // Handle client selection change from table
+  const handleClientSelectChange = (clients: string[]) => {
+    setSelectedClients(clients);
+
+    // Automatically switch to "Group by Client" when filtering by clients
+    const newGroupBy = clients.length > 0 ? 'client' : groupBy;
+    if (newGroupBy !== groupBy) {
+      setGroupBy(newGroupBy);
+    }
+
+    updateURL(sortBy, newGroupBy, isSummaryCollapsed, clients);
+  };
+
+  // Save current selection as favorites
+  const saveFavorites = () => {
+    localStorage.setItem('favoriteClients', JSON.stringify(selectedClients));
+    setFavoriteClients(selectedClients);
+  };
+
+  // Clear favorites
+  const clearFavorites = () => {
+    localStorage.removeItem('favoriteClients');
+    setFavoriteClients([]);
+  };
+
   return (
     <div style={containerStyle}>
       <Header />
@@ -403,9 +519,9 @@ const GroupDetail = () => {
             </div>
 
             {/* Workflow Status Section */}
-            <WorkflowStatus 
-              workflowUrls={directory.github_workflows} 
-              groupName={name} 
+            <WorkflowStatus
+              workflowUrls={directory.github_workflows}
+              groupName={name}
             />
 
             {/* Summary Section */}
@@ -466,8 +582,222 @@ const GroupDetail = () => {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem'
+                    gap: '0.5rem',
+                    flexWrap: 'wrap'
                   }}>
+                    {/* Client Filter */}
+                    <div style={{ position: 'relative' }}>
+                      <details
+                        ref={clientFilterRef}
+                        style={{
+                          position: 'relative'
+                        }}
+                      >
+                        <summary
+                          style={{
+                            listStyle: 'none',
+                            cursor: 'pointer',
+                            userSelect: 'none'
+                          }}
+                        >
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            backgroundColor: isInactive
+                              ? (isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'var(--warning-bg, rgba(255, 251, 235, 0.8))')
+                              : (isDarkMode ? '#334155' : 'var(--badge-bg, #f3f4f6)'),
+                            borderRadius: '0.375rem',
+                            padding: '0.25rem 0.5rem',
+                            border: isInactive
+                              ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                              : `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            gap: '0.5rem',
+                            minWidth: '150px'
+                          }}>
+                            <span style={{
+                              fontSize: '0.75rem',
+                              color: isInactive
+                                ? 'var(--warning-text, #b45309)'
+                                : (isDarkMode ? '#f8fafc' : '#1e293b'),
+                              flex: 1
+                            }}>
+                              <span style={{ fontWeight: '600' }}>Clients:</span> {selectedClients.length === 0 ? 'All' : selectedClients.length === 1 ? selectedClients[0] : selectedClients.length}
+                            </span>
+                            <span style={{
+                              fontSize: '0.75rem',
+                              color: isInactive
+                                ? 'var(--warning-text, #b45309)'
+                                : (isDarkMode ? '#f8fafc' : 'var(--text-primary, #111827)'),
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}>
+                              ▼
+                            </span>
+                          </div>
+                        </summary>
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '0.25rem',
+                            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                            border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            borderRadius: '0.375rem',
+                            boxShadow: isDarkMode
+                              ? '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                              : '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                            padding: '0.5rem',
+                            zIndex: 10,
+                            minWidth: '250px',
+                            maxHeight: '400px',
+                            overflowY: 'auto'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '0.5rem',
+                              paddingBottom: '0.5rem',
+                              borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            }}>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                              }}>
+                                Filter by Clients
+                              </span>
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                {selectedClients.length > 0 && (
+                                  <button
+                                    onClick={clearClientFilters}
+                                    style={{
+                                      fontSize: '0.625rem',
+                                      color: '#3b82f6',
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: '0.125rem 0.25rem',
+                                    }}
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {availableClients.map(client => (
+                              <label
+                                key={client}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  padding: '0.375rem 0.25rem',
+                                  cursor: 'pointer',
+                                  borderRadius: '0.25rem',
+                                  fontSize: '0.75rem',
+                                  color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = isDarkMode ? '#334155' : '#f3f4f6';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedClients.includes(client)}
+                                  onChange={() => toggleClient(client)}
+                                  style={{
+                                    cursor: 'pointer',
+                                    width: '14px',
+                                    height: '14px',
+                                  }}
+                                />
+                                <span style={{ flex: 1 }}>{client}</span>
+                                {favoriteClients.includes(client) && (
+                                  <span style={{ fontSize: '0.875rem' }}>⭐</span>
+                                )}
+                              </label>
+                            ))}
+
+                            {selectedClients.length > 0 && (
+                              <div style={{
+                                marginTop: '0.5rem',
+                                paddingTop: '0.5rem',
+                                borderTop: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5rem'
+                              }}>
+                                <div style={{
+                                  display: 'flex',
+                                  gap: '0.5rem',
+                                  justifyContent: 'space-between'
+                                }}>
+                                  <button
+                                    onClick={saveFavorites}
+                                    style={{
+                                      flex: 1,
+                                      fontSize: '0.7rem',
+                                      padding: '0.375rem 0.5rem',
+                                      backgroundColor: '#3b82f6',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '0.25rem',
+                                      cursor: 'pointer',
+                                      fontWeight: '500',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#2563eb';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#3b82f6';
+                                    }}
+                                  >
+                                    ⭐ Save as Favorites
+                                  </button>
+                                  {favoriteClients.length > 0 && (
+                                    <button
+                                      onClick={clearFavorites}
+                                      style={{
+                                        fontSize: '0.7rem',
+                                        padding: '0.375rem 0.5rem',
+                                        backgroundColor: isDarkMode ? '#374151' : '#e5e7eb',
+                                        color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                        border: 'none',
+                                        borderRadius: '0.25rem',
+                                        cursor: 'pointer',
+                                        fontWeight: '500',
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = isDarkMode ? '#4b5563' : '#d1d5db';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = isDarkMode ? '#374151' : '#e5e7eb';
+                                      }}
+                                    >
+                                      Clear Favorites
+                                    </button>
+                                  )}
+                                </div>
+                                {favoriteClients.length > 0 && (
+                                  <div style={{
+                                    fontSize: '0.65rem',
+                                    color: isDarkMode ? '#9ca3af' : '#6b7280',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center',
+                                  }}>
+                                    Favorites are automatically loaded when switching between pages
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                      </details>
+                    </div>
+
                     {/* Sort By Selector */}
                   <div style={{
                     display: 'flex',
@@ -624,7 +954,7 @@ const GroupDetail = () => {
 
               {!isSummaryCollapsed && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {Object.entries(getGroupedRuns(testRuns, groupBy)).map(([groupKey, groupRuns]) => (
+                {Object.entries(getGroupedRuns(filterByClients(testRuns), groupBy)).map(([groupKey, groupRuns]) => (
                   <TestResultGroup
                     key={groupKey}
                     groupKey={groupKey}
@@ -645,8 +975,10 @@ const GroupDetail = () => {
               directoryAddress={directoryAddresses[name]}
               testNameFilter={testNameFilter}
               clientFilter={clientFilter}
+              selectedClients={selectedClients}
               setTestNameFilter={setTestNameFilter}
               setClientFilter={setClientFilter}
+              onClientSelectChange={handleClientSelectChange}
             />
           </div>
         </div>
