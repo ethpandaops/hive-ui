@@ -138,6 +138,7 @@ const GroupDetail = () => {
       setGroupBy(newGroupBy);
       updateURL(sortBy, newGroupBy, isSummaryCollapsed, selectedClients);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // Close client filter dropdown when clicking outside

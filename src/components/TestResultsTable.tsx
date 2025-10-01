@@ -11,22 +11,20 @@ interface TestResultsTableProps {
   runs: TestRun[];
   directory: string;
   directoryAddress: string;
-  testNameFilter: string;
-  clientFilter: string;
+  testNameFilter?: string;
+  clientFilter?: string;
   selectedClients?: string[];
-  setTestNameFilter: (value: string) => void;
-  setClientFilter: (value: string) => void;
+  setTestNameFilter?: (value: string) => void;
+  setClientFilter?: (value: string) => void;
   onClientSelectChange?: (clients: string[]) => void;
 }
 
 const TestResultsTable = ({
   runs,
   directory,
-  testNameFilter,
-  clientFilter,
+  testNameFilter = '',
+  clientFilter = '',
   selectedClients = [],
-  setTestNameFilter,
-  setClientFilter,
   onClientSelectChange
 }: TestResultsTableProps) => {
   const [sortField, setSortField] = useState<SortField>(null);
