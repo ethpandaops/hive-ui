@@ -13,6 +13,7 @@ interface TestResultsTableProps {
   directoryAddress: string;
   testNameFilter: string;
   clientFilter: string;
+  selectedClients?: string[];
   setTestNameFilter: (value: string) => void;
   setClientFilter: (value: string) => void;
 }
@@ -22,6 +23,7 @@ const TestResultsTable = ({
   directory,
   testNameFilter,
   clientFilter,
+  selectedClients = [],
   setTestNameFilter,
   setClientFilter
 }: TestResultsTableProps) => {
@@ -38,7 +40,11 @@ const TestResultsTable = ({
     const matchesClient = clientFilter === '' ||
       clients.toLowerCase().includes(clientFilter.toLowerCase());
 
-    return matchesTestName && matchesClient;
+    // Apply selectedClients filter (from the dropdown)
+    const matchesSelectedClients = selectedClients.length === 0 ||
+      run.clients.some(client => selectedClients.includes(client));
+
+    return matchesTestName && matchesClient && matchesSelectedClients;
   });
 
   // Sort runs by start time (newest first) for each test/client combination
