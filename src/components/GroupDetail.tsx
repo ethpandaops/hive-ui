@@ -618,10 +618,10 @@ const GroupDetail = () => {
                               fontSize: '0.75rem',
                               color: isInactive
                                 ? 'var(--warning-text, #b45309)'
-                                : (isDarkMode ? '#9ca3af' : '#6b7280'),
+                                : (isDarkMode ? '#f8fafc' : '#1e293b'),
                               flex: 1
                             }}>
-                              Clients: {selectedClients.length === 0 ? 'All' : selectedClients.length === 1 ? selectedClients[0] : selectedClients.length}
+                              <span style={{ fontWeight: '600' }}>Clients:</span> {selectedClients.length === 0 ? 'All' : selectedClients.length === 1 ? selectedClients[0] : selectedClients.length}
                             </span>
                             <span style={{
                               fontSize: '0.75rem',
