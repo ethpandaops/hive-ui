@@ -55,15 +55,16 @@ const TestResultsTable = ({
     const matchesSelectedClients = selectedClients.length === 0 ||
       run.clients.some(client => selectedClients.includes(client));
 
-    // Apply status filter
-    const passRate = run.ntests > 0 ? (run.passes / run.ntests) * 100 : 0;
+    // Apply status filter (matching statusHelpers.ts logic)
     let matchesStatus = true;
-    if (statusFilter === 'pass') {
-      matchesStatus = passRate === 100;
-    } else if (statusFilter === 'fail') {
-      matchesStatus = passRate < 100 && passRate > 0;
+    if (statusFilter === 'success') {
+      matchesStatus = run.fails === 0;
+    } else if (statusFilter === 'timeout') {
+      matchesStatus = run.timeout;
+    } else if (statusFilter === 'failed') {
+      matchesStatus = run.passes > 0 && run.passes / run.ntests > 0.5 && run.fails > 0;
     } else if (statusFilter === 'error') {
-      matchesStatus = passRate === 0;
+      matchesStatus = !run.timeout && (run.passes === 0 || run.passes / run.ntests <= 0.5) && run.fails > 0;
     }
 
     return matchesTestName && matchesTestNameSelect && matchesClient && matchesSelectedClients && matchesStatus;
@@ -402,8 +403,9 @@ const TestResultsTable = ({
                   }}
                 >
                   <option value="all">All</option>
-                  <option value="pass">Pass</option>
-                  <option value="fail">Fail</option>
+                  <option value="success">Success</option>
+                  <option value="timeout">Timeout</option>
+                  <option value="failed">Failed</option>
                   <option value="error">Error</option>
                 </select>
               </div>
