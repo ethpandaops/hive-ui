@@ -182,8 +182,67 @@ const TestResultsTable = ({
     );
   };
 
+  // Check if any filters are active
+  const hasActiveFilters = testNameSelectFilter !== 'all' ||
+                          selectedClients.length > 0 ||
+                          statusFilter !== 'all';
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setTestNameSelectFilter('all');
+    setStatusFilter('all');
+    if (onClientSelectChange) {
+      onClientSelectChange([]);
+    }
+  };
+
   return (
     <div style={{ overflow: 'auto' }}>
+      {hasActiveFilters && (
+        <div style={{
+          padding: '0.75rem 1rem',
+          backgroundColor: 'var(--summary-bg, rgba(249, 250, 251, 0.5))',
+          borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <span style={{
+            fontSize: '0.875rem',
+            color: 'var(--text-secondary, #6b7280)'
+          }}>
+            Filters active: {[
+              testNameSelectFilter !== 'all' && 'Test Name',
+              selectedClients.length > 0 && `${selectedClients.length} Client${selectedClients.length > 1 ? 's' : ''}`,
+              statusFilter !== 'all' && 'Status'
+            ].filter(Boolean).join(', ')}
+          </span>
+          <button
+            onClick={clearAllFilters}
+            style={{
+              padding: '0.375rem 0.75rem',
+              fontSize: '0.75rem',
+              fontWeight: '500',
+              color: '#3b82f6',
+              backgroundColor: 'transparent',
+              border: '1px solid #3b82f6',
+              borderRadius: '0.375rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#3b82f6';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '#3b82f6';
+            }}
+          >
+            Clear All Filters
+          </button>
+        </div>
+      )}
       <table style={{
         minWidth: '100%',
         borderCollapse: 'separate',
