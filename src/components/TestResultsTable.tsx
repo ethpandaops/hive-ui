@@ -2,7 +2,7 @@ import { TestRun } from '../types';
 import { format } from 'date-fns';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 type SortField = 'date' | 'name' | 'total' | 'pass' | 'fail' | 'status' | null;
 type SortDirection = 'asc' | 'desc';
@@ -53,6 +53,63 @@ const TestResultsTable = ({
     const size = searchParams.get('t_size');
     return size ? parseInt(size, 10) : 50;
   });
+
+  // Column widths state
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('tableColumnWidths');
+    return saved ? JSON.parse(saved) : {
+      date: 50,
+      name: 50,
+      clients: 4500,
+      total: 100,
+      pass: 100,
+      fail: 100,
+      status: 150
+    };
+  });
+
+  const resizingColumn = useRef<string | null>(null);
+  const startX = useRef<number>(0);
+  const startWidth = useRef<number>(0);
+
+  // Save column widths to localStorage
+  useEffect(() => {
+    localStorage.setItem('tableColumnWidths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
+  // Handle column resize
+  const handleMouseDown = (e: React.MouseEvent, column: string) => {
+    e.preventDefault();
+    resizingColumn.current = column;
+    startX.current = e.pageX;
+    startWidth.current = columnWidths[column];
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizingColumn.current) return;
+
+      const diff = e.pageX - startX.current;
+      const newWidth = Math.max(50, startWidth.current + diff);
+
+      setColumnWidths(prev => ({
+        ...prev,
+        [resizingColumn.current!]: newWidth
+      }));
+    };
+
+    const handleMouseUp = () => {
+      resizingColumn.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   // Update URL with current filter/sort/pagination state
   const updateURL = () => {
@@ -254,6 +311,30 @@ const TestResultsTable = ({
       </span>
     );
   };
+
+  // Render resize handle
+  const renderResizeHandle = (column: string) => (
+    <div
+      onMouseDown={(e) => handleMouseDown(e, column)}
+      style={{
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: '4px',
+        cursor: 'col-resize',
+        userSelect: 'none',
+        backgroundColor: 'transparent',
+        transition: 'background-color 0.2s'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = 'var(--border-color, rgba(229, 231, 235, 0.8))';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+      }}
+    />
+  );
 
   // Check if any filters are active
   const hasActiveFilters = testNameSelectFilter !== 'all' ||
@@ -673,13 +754,16 @@ const TestResultsTable = ({
       <table style={{
         minWidth: '100%',
         borderCollapse: 'separate',
-        borderSpacing: 0
+        borderSpacing: 0,
+        tableLayout: 'fixed'
       }}>
         <thead style={{ backgroundColor: 'var(--table-header-bg, #f9fafb)' }}>
           <tr>
             <th
               onClick={() => handleSort('date')}
               style={{
+                position: 'relative',
+                width: `${columnWidths.date}px`,
                 padding: '0.75rem 1rem',
                 textAlign: 'left',
                 fontSize: '0.75rem',
@@ -693,9 +777,12 @@ const TestResultsTable = ({
               }}
             >
               Date {renderSortIndicator('date')}
+              {renderResizeHandle('date')}
             </th>
             <th
               style={{
+                position: 'relative',
+                width: `${columnWidths.name}px`,
                 padding: '0.75rem 1rem',
                 textAlign: 'left',
                 fontSize: '0.75rem',
@@ -737,8 +824,11 @@ const TestResultsTable = ({
                   ))}
                 </select>
               </div>
+              {renderResizeHandle('name')}
             </th>
             <th style={{
+              position: 'relative',
+              width: `${columnWidths.clients}px`,
               padding: '0.75rem 1rem',
               textAlign: 'left',
               fontSize: '0.75rem',
@@ -747,7 +837,6 @@ const TestResultsTable = ({
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '25%',
               verticalAlign: 'top'
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
@@ -783,10 +872,13 @@ const TestResultsTable = ({
                   ))}
                 </select>
               </div>
+              {renderResizeHandle('clients')}
             </th>
             <th
               onClick={() => handleSort('total')}
               style={{
+                position: 'relative',
+                width: `${columnWidths.total}px`,
                 padding: '0.5rem',
                 textAlign: 'right',
                 fontSize: '0.75rem',
@@ -795,16 +887,18 @@ const TestResultsTable = ({
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                width: '50px',
                 cursor: 'pointer',
                 verticalAlign: 'top'
               }}
             >
               Total {renderSortIndicator('total')}
+              {renderResizeHandle('total')}
             </th>
             <th
               onClick={() => handleSort('pass')}
               style={{
+                position: 'relative',
+                width: `${columnWidths.pass}px`,
                 padding: '0.5rem',
                 textAlign: 'right',
                 fontSize: '0.75rem',
@@ -813,16 +907,18 @@ const TestResultsTable = ({
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                width: '50px',
                 cursor: 'pointer',
                 verticalAlign: 'top'
               }}
             >
               Pass {renderSortIndicator('pass')}
+              {renderResizeHandle('pass')}
             </th>
             <th
               onClick={() => handleSort('fail')}
               style={{
+                position: 'relative',
+                width: `${columnWidths.fail}px`,
                 padding: '0.5rem',
                 textAlign: 'right',
                 fontSize: '0.75rem',
@@ -831,12 +927,12 @@ const TestResultsTable = ({
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                width: '50px',
                 cursor: 'pointer',
                 verticalAlign: 'top'
               }}
             >
               Fail {renderSortIndicator('fail')}
+              {renderResizeHandle('fail')}
             </th>
             <th style={{
               padding: '0.5rem',
@@ -847,13 +943,15 @@ const TestResultsTable = ({
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '50px',
+              width: '80px',
               verticalAlign: 'top'
             }}>
               Diff
             </th>
             <th
               style={{
+                position: 'relative',
+                width: `${columnWidths.status}px`,
                 padding: '0.5rem',
                 textAlign: 'right',
                 fontSize: '0.75rem',
@@ -862,7 +960,6 @@ const TestResultsTable = ({
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                width: '100px',
                 verticalAlign: 'top'
               }}
             >
@@ -895,6 +992,7 @@ const TestResultsTable = ({
                   <option value="error">Error</option>
                 </select>
               </div>
+              {renderResizeHandle('status')}
             </th>
           </tr>
         </thead>
