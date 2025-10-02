@@ -31,6 +31,8 @@ const TestResultsTable = ({
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [testNameSelectFilter, setTestNameSelectFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(50);
 
   // Get all unique test names
   const uniqueTestNames = Array.from(new Set(runs.map(run => run.name))).sort();
@@ -194,7 +196,208 @@ const TestResultsTable = ({
     if (onClientSelectChange) {
       onClientSelectChange([]);
     }
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
+
+  // Reset to first page when filters change
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+  };
+
+  // Calculate pagination
+  const totalItems = sortedData.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedData = sortedData.slice(startIndex, endIndex);
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 7;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 4) {
+        for (let i = 1; i <= 5; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 4; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
+
+  // Pagination controls component (reusable for top and bottom)
+  const PaginationControls = () => (
+    <div style={{
+      padding: '1rem',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderTop: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+      backgroundColor: 'var(--card-bg, white)',
+      flexWrap: 'wrap',
+      gap: '1rem'
+    }}>
+      {/* Results info and page size selector */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem',
+        fontSize: '0.875rem',
+        color: 'var(--text-secondary, #6b7280)'
+      }}>
+        <span>
+          Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems} results
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <label htmlFor="pageSize" style={{ fontSize: '0.875rem' }}>
+            Per page:
+          </label>
+          <select
+            id="pageSize"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            style={{
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.875rem',
+              borderRadius: '0.375rem',
+              border: '1px solid var(--border-color)',
+              backgroundColor: 'var(--card-bg)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer'
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Page navigation */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem'
+      }}>
+        <button
+          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          disabled={currentPage === 1}
+          style={{
+            padding: '0.5rem 0.75rem',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: currentPage === 1 ? 'var(--text-secondary, #9ca3af)' : 'var(--text-primary, #111827)',
+            backgroundColor: 'var(--card-bg, white)',
+            border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+            borderRadius: '0.375rem',
+            cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            if (currentPage !== 1) {
+              e.currentTarget.style.backgroundColor = 'var(--summary-bg, rgba(249, 250, 251, 0.5))';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--card-bg, white)';
+          }}
+        >
+          Previous
+        </button>
+
+        {getPageNumbers().map((page, idx) => (
+          page === '...' ? (
+            <span key={`ellipsis-${idx}`} style={{
+              padding: '0.5rem',
+              color: 'var(--text-secondary, #6b7280)'
+            }}>
+              ...
+            </span>
+          ) : (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page as number)}
+              style={{
+                padding: '0.5rem 0.75rem',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                color: currentPage === page ? 'white' : 'var(--text-primary, #111827)',
+                backgroundColor: currentPage === page ? '#3b82f6' : 'var(--card-bg, white)',
+                border: `1px solid ${currentPage === page ? '#3b82f6' : 'var(--border-color, rgba(229, 231, 235, 0.8))'}`,
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                minWidth: '2.5rem'
+              }}
+              onMouseEnter={(e) => {
+                if (currentPage !== page) {
+                  e.currentTarget.style.backgroundColor = 'var(--summary-bg, rgba(249, 250, 251, 0.5))';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (currentPage !== page) {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg, white)';
+                }
+              }}
+            >
+              {page}
+            </button>
+          )
+        ))}
+
+        <button
+          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          disabled={currentPage === totalPages}
+          style={{
+            padding: '0.5rem 0.75rem',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: currentPage === totalPages ? 'var(--text-secondary, #9ca3af)' : 'var(--text-primary, #111827)',
+            backgroundColor: 'var(--card-bg, white)',
+            border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+            borderRadius: '0.375rem',
+            cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            if (currentPage !== totalPages) {
+              e.currentTarget.style.backgroundColor = 'var(--summary-bg, rgba(249, 250, 251, 0.5))';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--card-bg, white)';
+          }}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ overflow: 'auto' }}>
@@ -397,6 +600,10 @@ const TestResultsTable = ({
           </button>
         </div>
       )}
+
+      {/* Pagination Controls - Top */}
+      {totalPages > 1 && <PaginationControls />}
+
       <table style={{
         minWidth: '100%',
         borderCollapse: 'separate',
@@ -626,7 +833,7 @@ const TestResultsTable = ({
           </tr>
         </thead>
         <tbody>
-          {sortedData.map((run, runIndex) => {
+          {paginatedData.map((run, runIndex) => {
             const statusStyles = getStatusStyles(run);
             const fileName = run.fileName;
             const diff = getPassDiff(run);
@@ -903,6 +1110,9 @@ const TestResultsTable = ({
           )}
         </tbody>
       </table>
+
+      {/* Pagination Controls - Bottom */}
+      {totalPages > 1 && <PaginationControls />}
     </div>
   );
 };
