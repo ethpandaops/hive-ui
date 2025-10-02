@@ -3,7 +3,6 @@ import { format } from 'date-fns';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getPassDiff } from '../utils/passDiffHelpers';
 
 type SortField = 'date' | 'name' | 'total' | 'pass' | 'fail' | 'status' | null;
 type SortDirection = 'asc' | 'desc';
@@ -269,11 +268,6 @@ const TestResultsTable = ({
       onClientSelectChange([]);
     }
     setCurrentPage(1); // Reset to first page when clearing filters
-  };
-
-  // Reset to first page when filters change
-  const handleFilterChange = () => {
-    setCurrentPage(1);
   };
 
   // Calculate pagination
