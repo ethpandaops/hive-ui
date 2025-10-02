@@ -1,8 +1,9 @@
 import { TestRun } from '../types';
 import { format } from 'date-fns';
 import { getStatusStyles } from '../utils/statusHelpers';
-import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { getPassDiff } from '../utils/passDiffHelpers';
 
 type SortField = 'date' | 'name' | 'total' | 'pass' | 'fail' | 'status' | null;
 type SortDirection = 'asc' | 'desc';
@@ -27,12 +28,83 @@ const TestResultsTable = ({
   selectedClients = [],
   onClientSelectChange
 }: TestResultsTableProps) => {
-  const [sortField, setSortField] = useState<SortField>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [testNameSelectFilter, setTestNameSelectFilter] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(50);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Initialize state from URL params
+  const [sortField, setSortField] = useState<SortField>(() => {
+    const field = searchParams.get('t_sort');
+    return (field as SortField) || null;
+  });
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
+    const dir = searchParams.get('t_dir');
+    return (dir === 'asc' || dir === 'desc') ? dir : 'desc';
+  });
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    return searchParams.get('t_status') || 'all';
+  });
+  const [testNameSelectFilter, setTestNameSelectFilter] = useState<string>(() => {
+    return searchParams.get('t_test') || 'all';
+  });
+  const [currentPage, setCurrentPage] = useState<number>(() => {
+    const page = searchParams.get('t_page');
+    return page ? parseInt(page, 10) : 1;
+  });
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const size = searchParams.get('t_size');
+    return size ? parseInt(size, 10) : 50;
+  });
+
+  // Update URL with current filter/sort/pagination state
+  const updateURL = () => {
+    const params = new URLSearchParams(searchParams);
+
+    // Sort
+    if (sortField) {
+      params.set('t_sort', sortField);
+      params.set('t_dir', sortDirection);
+    } else {
+      params.delete('t_sort');
+      params.delete('t_dir');
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      params.set('t_status', statusFilter);
+    } else {
+      params.delete('t_status');
+    }
+
+    // Test name filter
+    if (testNameSelectFilter !== 'all') {
+      params.set('t_test', testNameSelectFilter);
+    } else {
+      params.delete('t_test');
+    }
+
+    // Pagination
+    if (currentPage !== 1) {
+      params.set('t_page', currentPage.toString());
+    } else {
+      params.delete('t_page');
+    }
+
+    if (pageSize !== 50) {
+      params.set('t_size', pageSize.toString());
+    } else {
+      params.delete('t_size');
+    }
+
+    const newSearch = params.toString();
+    const newUrl = newSearch ? `?${newSearch}` : window.location.pathname;
+    navigate(newUrl, { replace: true });
+  };
+
+  // Update URL when any filter/sort/pagination changes
+  useEffect(() => {
+    updateURL();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortField, sortDirection, statusFilter, testNameSelectFilter, currentPage, pageSize]);
 
   // Get all unique test names
   const uniqueTestNames = Array.from(new Set(runs.map(run => run.name))).sort();
