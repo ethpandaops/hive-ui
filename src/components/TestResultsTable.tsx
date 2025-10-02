@@ -1095,7 +1095,7 @@ const TestResultsTable = ({
                             maxWidth: '80ch'
                           }}
                           title={version}>
-                            {version.length > 80 ? version.substring(0, 80) + '...' : version}
+                            {version}
                           </div>
                         </div>
                       ))}
