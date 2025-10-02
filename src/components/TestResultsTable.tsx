@@ -410,20 +410,6 @@ const TestResultsTable = ({
                 </select>
               </div>
             </th>
-            <th style={{
-              padding: '0.5rem',
-              textAlign: 'right',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: 'var(--text-secondary, #6b7280)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-              width: '70px',
-              verticalAlign: 'top'
-            }}>
-              Details
-            </th>
           </tr>
         </thead>
         <tbody>
@@ -432,143 +418,218 @@ const TestResultsTable = ({
             const fileName = run.fileName;
             const diff = getPassDiff(run);
 
-            return (
-              <tr key={`${run.name}-${runIndex}`} style={{
-                backgroundColor: 'var(--card-bg, white)',
-                transition: 'background-color 0.15s ease-in-out'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--row-hover-bg, rgba(249, 250, 251, 0.5))';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--card-bg, white)';
-              }}>
-                <td style={{
-                  padding: '0.75rem 1rem',
-                  fontSize: '0.875rem',
-                  color: 'var(--text-secondary, #6b7280)',
-                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap'
-                }}>
-                  {formatDate(run.start)}
-                </td>
-                <td style={{
-                  padding: '0.75rem 1rem',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  color: 'var(--text-primary, #111827)',
-                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  whiteSpace: 'nowrap'
-                }}>
-                  {run.name}
-                </td>
-                <td style={{
-                  padding: '0.75rem 1rem',
-                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  maxWidth: '30%',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.5rem'
-                  }}>
-                    {run.versions && Object.entries(run.versions).map(([client, version]) => (
-                      <div key={client} style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        fontSize: '0.75rem'
-                      }}>
-                        <div style={{
-                          fontWeight: '500',
-                          color: 'var(--text-primary, #111827)'
-                        }}>
-                          {client}
-                        </div>
-                        <div style={{
-                          color: 'var(--text-secondary, #6b7280)',
-                          fontSize: '0.7rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: '80ch'
-                        }}
-                        title={version}>
-                          {version.length > 80 ? version.substring(0, 80) + '...' : version}
-                        </div>
-                      </div>
-                    ))}
+            const testUrl = `/test/${directory}/${fileName.replace(/\.json$/, '')}`;
 
-                    {!run.versions && run.clients && run.clients.map((client) => (
-                      <div key={client} style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        fontSize: '0.75rem'
-                      }}>
-                        <div style={{
-                          fontWeight: '500',
-                          color: 'var(--text-primary, #111827)'
+            return (
+              <tr
+                key={`${run.name}-${runIndex}`}
+                style={{
+                  backgroundColor: 'var(--card-bg, white)',
+                  transition: 'background-color 0.15s ease-in-out'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--row-hover-bg, rgba(249, 250, 251, 0.5))';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg, white)';
+                }}
+              >
+                <td style={{
+                  padding: '0',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+                }}>
+                  <Link
+                    to={testUrl}
+                    style={{
+                      display: 'block',
+                      padding: '0.75rem 1rem',
+                      fontSize: '0.875rem',
+                      color: 'var(--text-secondary, #6b7280)',
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {formatDate(run.start)}
+                  </Link>
+                </td>
+                <td style={{
+                  padding: '0',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))'
+                }}>
+                  <Link
+                    to={testUrl}
+                    style={{
+                      display: 'block',
+                      padding: '0.75rem 1rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: 'var(--text-primary, #111827)',
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {run.name}
+                  </Link>
+                </td>
+                <td style={{
+                  padding: '0',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  maxWidth: '30%'
+                }}>
+                  <Link
+                    to={testUrl}
+                    style={{
+                      display: 'block',
+                      padding: '0.75rem 1rem',
+                      textDecoration: 'none',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem'
+                    }}>
+                      {run.versions && Object.entries(run.versions).map(([client, version]) => (
+                        <div key={client} style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          fontSize: '0.75rem'
                         }}>
-                          {client}
+                          <div style={{
+                            fontWeight: '500',
+                            color: 'var(--text-primary, #111827)'
+                          }}>
+                            {client}
+                          </div>
+                          <div style={{
+                            color: 'var(--text-secondary, #6b7280)',
+                            fontSize: '0.7rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '80ch'
+                          }}
+                          title={version}>
+                            {version.length > 80 ? version.substring(0, 80) + '...' : version}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+
+                      {!run.versions && run.clients && run.clients.map((client) => (
+                        <div key={client} style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          fontSize: '0.75rem'
+                        }}>
+                          <div style={{
+                            fontWeight: '500',
+                            color: 'var(--text-primary, #111827)'
+                          }}>
+                            {client}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Link>
                 </td>
                 <td style={{
-                  padding: '0.5rem',
-                  fontSize: '0.875rem',
-                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  textAlign: 'right',
-                  color: 'var(--text-primary, #111827)'
-                }}>
-                  {run.ntests}
-                </td>
-                <td style={{
-                  padding: '0.5rem',
-                  fontSize: '0.875rem',
-                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  textAlign: 'right',
-                  color: 'var(--success-text, #047857)',
-                  fontWeight: '500'
-                }}>
-                  {run.passes}
-                </td>
-                <td style={{
-                  padding: '0.5rem',
-                  fontSize: '0.875rem',
-                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  textAlign: 'right',
-                  color: run.fails > 0 ? 'var(--error-text, #b91c1c)' : 'var(--text-secondary, #6b7280)',
-                  fontWeight: run.fails > 0 ? '500' : 'normal'
-                }}>
-                  {run.fails}
-                </td>
-                <td style={{
-                  padding: '0.5rem',
+                  padding: '0',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   textAlign: 'right'
                 }}>
-                  {diff ? (
-                    diff.value !== 0 ? (
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.3rem',
-                        justifyContent: 'center',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        color: diff.value > 0
-                          ? 'var(--success-text, #047857)'
-                          : 'var(--error-text, #b91c1c)'
-                      }}>
-                        <span>
-                          {diff.value > 0 ? '↑' : '↓'}
+                  <Link
+                    to={testUrl}
+                    style={{
+                      display: 'block',
+                      padding: '0.5rem',
+                      fontSize: '0.875rem',
+                      color: 'var(--text-primary, #111827)',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    {run.ntests}
+                  </Link>
+                </td>
+                <td style={{
+                  padding: '0',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  textAlign: 'right'
+                }}>
+                  <Link
+                    to={testUrl}
+                    style={{
+                      display: 'block',
+                      padding: '0.5rem',
+                      fontSize: '0.875rem',
+                      color: 'var(--success-text, #047857)',
+                      fontWeight: '500',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    {run.passes}
+                  </Link>
+                </td>
+                <td style={{
+                  padding: '0',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  textAlign: 'right'
+                }}>
+                  <Link
+                    to={testUrl}
+                    style={{
+                      display: 'block',
+                      padding: '0.5rem',
+                      fontSize: '0.875rem',
+                      color: run.fails > 0 ? 'var(--error-text, #b91c1c)' : 'var(--text-secondary, #6b7280)',
+                      fontWeight: run.fails > 0 ? '500' : 'normal',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    {run.fails}
+                  </Link>
+                </td>
+                <td style={{
+                  padding: '0',
+                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  textAlign: 'right'
+                }}>
+                  <Link
+                    to={testUrl}
+                    style={{
+                      display: 'block',
+                      padding: '0.5rem',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    {diff ? (
+                      diff.value !== 0 ? (
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          justifyContent: 'center',
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          color: diff.value > 0
+                            ? 'var(--success-text, #047857)'
+                            : 'var(--error-text, #b91c1c)'
+                        }}>
+                          <span>
+                            {diff.value > 0 ? '↑' : '↓'}
+                          </span>
+                          <span>
+                            {diff.value > 0 ? '+' : ''}{diff.value}
+                          </span>
+                        </div>
+                      ) : (
+                        <span style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--text-secondary, #6b7280)'
+                        }}>
+                          —
                         </span>
-                        <span>
-                          {diff.value > 0 ? '+' : ''}{diff.value}
-                        </span>
-                      </div>
+                      )
                     ) : (
                       <span style={{
                         fontSize: '0.75rem',
@@ -576,76 +637,40 @@ const TestResultsTable = ({
                       }}>
                         —
                       </span>
-                    )
-                  ) : (
-                    <span style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--text-secondary, #6b7280)'
-                    }}>
-                      —
-                    </span>
-                  )}
+                    )}
+                  </Link>
                 </td>
                 <td style={{
-                  padding: '0.5rem',
-                  borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                  textAlign: 'right'
-                }}>
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0.25rem 0.35rem',
-                    borderRadius: '9999px',
-                    fontSize: '0.7rem',
-                    fontWeight: '500',
-                    backgroundColor: statusStyles.bg,
-                    color: statusStyles.text,
-                    border: `1px solid ${statusStyles.border}20`,
-                    width: '60px',
-                    minWidth: '60px',
-                    textAlign: 'center'
-                  }}>
-                    <span style={{ marginRight: '0.15rem' }}>{statusStyles.icon}</span>
-                    {statusStyles.label}
-                  </div>
-                </td>
-                <td style={{
-                  padding: '0.5rem',
+                  padding: '0',
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   textAlign: 'right'
                 }}>
                   <Link
-                    to={`/test/${directory}/${fileName.replace(/\.json$/, '')}`}
+                    to={testUrl}
                     style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '0.25rem 0.35rem',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.7rem',
-                      fontWeight: '500',
-                      backgroundColor: 'var(--badge-bg, #f3f4f6)',
-                      color: 'var(--text-secondary, #4b5563)',
-                      textDecoration: 'none',
-                      border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--card-bg, white)';
-                      e.currentTarget.style.borderColor = 'var(--primary-color, #3b82f6)';
-                      e.currentTarget.style.color = 'var(--primary-color, #3b82f6)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--badge-bg, #f3f4f6)';
-                      e.currentTarget.style.borderColor = 'var(--border-color, rgba(229, 231, 235, 0.8))';
-                      e.currentTarget.style.color = 'var(--text-secondary, #4b5563)';
+                      display: 'block',
+                      padding: '0.5rem',
+                      textDecoration: 'none'
                     }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                         style={{ width: '0.8rem', height: '0.8rem', marginRight: '0.3rem' }}>
-                      <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 0 0 2 4.25v11.5A2.25 2.25 0 0 0 4.25 18h11.5A2.25 2.25 0 0 0 18 15.75V4.25A2.25 2.25 0 0 0 15.75 2H4.25ZM4 13.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75ZM4.75 6.5a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5ZM4 9.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 4 9.5Z" clipRule="evenodd" />
-                    </svg>
-                    Details
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0.25rem 0.35rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.7rem',
+                      fontWeight: '500',
+                      backgroundColor: statusStyles.bg,
+                      color: statusStyles.text,
+                      border: `1px solid ${statusStyles.border}20`,
+                      width: '60px',
+                      minWidth: '60px',
+                      textAlign: 'center'
+                    }}>
+                      <span style={{ marginRight: '0.15rem' }}>{statusStyles.icon}</span>
+                      {statusStyles.label}
+                    </div>
                   </Link>
                 </td>
               </tr>
@@ -653,7 +678,7 @@ const TestResultsTable = ({
           })}
           {filteredRuns.length === 0 && (
             <tr>
-              <td colSpan={9} style={{
+              <td colSpan={8} style={{
                 padding: '2rem',
                 textAlign: 'center',
                 color: 'var(--text-secondary)',
