@@ -205,18 +205,171 @@ const TestResultsTable = ({
           borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+          flexWrap: 'wrap'
         }}>
-          <span style={{
-            fontSize: '0.875rem',
-            color: 'var(--text-secondary, #6b7280)'
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            flex: 1
           }}>
-            Filters active: {[
-              testNameSelectFilter !== 'all' && 'Test Name',
-              selectedClients.length > 0 && `${selectedClients.length} Client${selectedClients.length > 1 ? 's' : ''}`,
-              statusFilter !== 'all' && 'Status'
-            ].filter(Boolean).join(', ')}
-          </span>
+            <span style={{
+              fontSize: '0.875rem',
+              color: 'var(--text-secondary, #6b7280)',
+              fontWeight: '500'
+            }}>
+              Active Filters:
+            </span>
+            {testNameSelectFilter !== 'all' && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                padding: '0.25rem 0.5rem',
+                backgroundColor: 'var(--card-bg, white)',
+                border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                borderRadius: '9999px',
+                fontSize: '0.75rem'
+              }}>
+                <span style={{
+                  color: 'var(--text-secondary, #6b7280)',
+                  fontWeight: '500'
+                }}>
+                  Test:
+                </span>
+                <span style={{
+                  color: 'var(--text-primary, #111827)',
+                  maxWidth: '200px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+                title={testNameSelectFilter}>
+                  {testNameSelectFilter}
+                </span>
+                <button
+                  onClick={() => setTestNameSelectFilter('all')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'var(--text-secondary, #6b7280)',
+                    fontSize: '0.875rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--error-text, #b91c1c)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text-secondary, #6b7280)';
+                  }}
+                  title="Remove test filter"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {selectedClients.map(client => (
+              <div
+                key={client}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  padding: '0.25rem 0.5rem',
+                  backgroundColor: 'var(--card-bg, white)',
+                  border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem'
+                }}
+              >
+                <span style={{
+                  color: 'var(--text-secondary, #6b7280)',
+                  fontWeight: '500'
+                }}>
+                  Client:
+                </span>
+                <span style={{ color: 'var(--text-primary, #111827)' }}>
+                  {client}
+                </span>
+                <button
+                  onClick={() => {
+                    if (onClientSelectChange) {
+                      onClientSelectChange(selectedClients.filter(c => c !== client));
+                    }
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'var(--text-secondary, #6b7280)',
+                    fontSize: '0.875rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--error-text, #b91c1c)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text-secondary, #6b7280)';
+                  }}
+                  title={`Remove ${client} filter`}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {statusFilter !== 'all' && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                padding: '0.25rem 0.5rem',
+                backgroundColor: 'var(--card-bg, white)',
+                border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                borderRadius: '9999px',
+                fontSize: '0.75rem'
+              }}>
+                <span style={{
+                  color: 'var(--text-secondary, #6b7280)',
+                  fontWeight: '500'
+                }}>
+                  Status:
+                </span>
+                <span style={{ color: 'var(--text-primary, #111827)', textTransform: 'capitalize' }}>
+                  {statusFilter}
+                </span>
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'var(--text-secondary, #6b7280)',
+                    fontSize: '0.875rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--error-text, #b91c1c)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text-secondary, #6b7280)';
+                  }}
+                  title="Remove status filter"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={clearAllFilters}
             style={{
@@ -228,7 +381,8 @@ const TestResultsTable = ({
               border: '1px solid #3b82f6',
               borderRadius: '0.375rem',
               cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#3b82f6';
@@ -239,7 +393,7 @@ const TestResultsTable = ({
               e.currentTarget.style.color = '#3b82f6';
             }}
           >
-            Clear All Filters
+            Clear All
           </button>
         </div>
       )}
