@@ -41,27 +41,25 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
     <Link
       to={`/test/${directory}/${suiteid}`}
       style={{
-        backgroundColor: 'var(--card-bg, #ffffff)',
+        backgroundColor: statusStyles.bg,
         borderRadius: '0.375rem',
         overflow: 'hidden',
-        border: '1px solid var(--border-color, rgba(229, 231, 235, 0.4))',
+        border: '1px solid var(--border-color, rgba(229, 231, 235, 0.6))',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
         position: 'relative',
-        background: statusStyles.pattern,
         textDecoration: 'none',
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+        transition: 'all 0.2s ease'
       }}
       onMouseOver={(e) => {
         e.currentTarget.style.transform = 'translateY(-1px)';
-        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+        e.currentTarget.style.border = '1px solid var(--border-color, rgba(229, 231, 235, 0.8))';
       }}
       onMouseOut={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
+        e.currentTarget.style.border = '1px solid var(--border-color, rgba(229, 231, 235, 0.6))';
         // Close popover when mouse leaves the card
         setOpenPopover(null);
       }}
