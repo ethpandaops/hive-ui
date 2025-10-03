@@ -1154,12 +1154,33 @@ const TestDetail = () => {
                         left: 0
                       }}></div>
                       <h3 style={sectionTitleStyle}>Client</h3>
-                      {Object.entries(testDetail.clientVersions).map(([client, version]) => (
-                        <div key={client} style={{ marginBottom: '0.5rem' }}>
-                          <span style={{ fontWeight: '500' }}>{client}</span>{' '}
-                          <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', opacity: 0.8 }}>{version}</span>
-                        </div>
-                      ))}
+                      {Object.entries(testDetail.clientVersions).map(([client, version]) => {
+                        const clientName = client.split('_')[0].toLowerCase();
+                        const logoPath = `/img/clients/${clientName}.jpg`;
+                        return (
+                          <div key={client} style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <img
+                              src={logoPath}
+                              alt={`${client} logo`}
+                              style={{
+                                width: '16px',
+                                height: '16px',
+                                minWidth: '16px',
+                                minHeight: '16px',
+                                borderRadius: '2px',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.src = '/img/clients/default.jpg';
+                              }}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                              <span style={{ fontWeight: '500' }}>{client}</span>
+                              <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', opacity: 0.8 }}>{version}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Test Stats Card */}

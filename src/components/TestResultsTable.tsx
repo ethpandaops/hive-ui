@@ -1103,6 +1103,8 @@ const TestResultsTable = ({
                                     style={{
                                       width: '16px',
                                       height: '16px',
+                                      minWidth: '16px',
+                                      minHeight: '16px',
                                       borderRadius: '2px',
                                       objectFit: 'cover'
                                     }}
@@ -1171,6 +1173,8 @@ const TestResultsTable = ({
                               style={{
                                 width: '16px',
                                 height: '16px',
+                                minWidth: '16px',
+                                minHeight: '16px',
                                 borderRadius: '2px',
                                 objectFit: 'cover'
                               }}

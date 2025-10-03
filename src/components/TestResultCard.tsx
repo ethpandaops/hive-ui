@@ -20,9 +20,6 @@ interface TestResultCardProps {
 const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResultCardProps) => {
   const statusStyles = getStatusStyles(run);
   const [openPopover, setOpenPopover] = useState<number | null>(null);
-  const displayName = groupBy === 'test'
-    ? run.clients.join(', ')  // When grouped by test, show clients
-    : run.name;
 
   // Remove .json extension for the URL
   const suiteid = run.fileName.replace(/\.json$/, '');
@@ -85,11 +82,56 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
             fontWeight: '500',
             color: 'var(--text-primary, #111827)',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flex: 1
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            flexWrap: 'wrap'
           }}>
-            {displayName}
+            {groupBy === 'test' ? (
+              // When grouped by test, show clients with logos
+              run.clients.map((client, idx) => {
+                const clientName = client.split('_')[0].toLowerCase();
+                const logoPath = `/img/clients/${clientName}.jpg`;
+                return (
+                  <div
+                    key={client}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}
+                  >
+                    <img
+                      src={logoPath}
+                      alt={`${client} logo`}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        minWidth: '16px',
+                        minHeight: '16px',
+                        borderRadius: '2px',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.src = '/img/clients/default.jpg';
+                      }}
+                    />
+                    <span>{client}</span>
+                    {idx < run.clients.length - 1 && <span>,</span>}
+                  </div>
+                );
+              })
+            ) : (
+              // When grouped by client, show test name
+              <span style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {run.name}
+              </span>
+            )}
           </div>
           <div style={{
             display: 'flex',
