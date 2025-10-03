@@ -152,8 +152,7 @@ const TestResultsTable = ({
     }
 
     const newSearch = params.toString();
-    const newUrl = newSearch ? `?${newSearch}` : window.location.pathname;
-    navigate(newUrl, { replace: true });
+    navigate(newSearch ? `?${newSearch}` : '', { replace: true });
   };
 
   // Update URL when any filter/sort/pagination changes
