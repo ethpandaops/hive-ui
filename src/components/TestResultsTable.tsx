@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 type SortField = 'date' | 'name' | 'total' | 'pass' | 'fail' | 'status' | null;
 type SortDirection = 'asc' | 'desc';
@@ -1008,7 +1009,8 @@ const TestResultsTable = ({
                 key={`${run.name}-${runIndex}`}
                 style={{
                   backgroundColor: 'var(--card-bg, white)',
-                  transition: 'background-color 0.15s ease-in-out'
+                  transition: 'background-color 0.15s ease-in-out',
+                  position: 'relative'
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.backgroundColor = 'var(--row-hover-bg, rgba(249, 250, 251, 0.5))';
@@ -1064,55 +1066,125 @@ const TestResultsTable = ({
                     style={{
                       display: 'block',
                       padding: '0.75rem 1rem',
-                      textDecoration: 'none',
-                      overflow: 'hidden'
+                      textDecoration: 'none'
                     }}
                   >
                     <div style={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.5rem'
+                      flexWrap: 'wrap',
+                      gap: '0.375rem',
+                      alignItems: 'center'
                     }}>
-                      {run.versions && Object.entries(run.versions).map(([client, version]) => (
-                        <div key={client} style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          fontSize: '0.75rem'
-                        }}>
-                          <div style={{
-                            fontWeight: '500',
-                            color: 'var(--text-primary, #111827)'
-                          }}>
-                            {client}
-                          </div>
-                          <div style={{
-                            color: 'var(--text-secondary, #6b7280)',
-                            fontSize: '0.7rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            maxWidth: '80ch'
-                          }}
-                          title={version}>
-                            {version}
-                          </div>
-                        </div>
-                      ))}
+                      {run.versions && Object.entries(run.versions).map(([client, version]) => {
+                        const clientName = client.split('_')[0].toLowerCase();
+                        const logoPath = `/img/clients/${clientName}.jpg`;
+                        return (
+                          <Tooltip.Provider key={client} delayDuration={200}>
+                            <Tooltip.Root>
+                              <Tooltip.Trigger asChild>
+                                <div
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.375rem',
+                                    padding: '0.25rem 0.5rem',
+                                    backgroundColor: 'var(--badge-bg, #f3f4f6)',
+                                    border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '500',
+                                    color: 'var(--text-primary, #111827)',
+                                    cursor: 'pointer',
+                                    position: 'relative',
+                                    zIndex: 1
+                                  }}
+                                >
+                                  <img
+                                    src={logoPath}
+                                    alt={`${client} logo`}
+                                    style={{
+                                      width: '16px',
+                                      height: '16px',
+                                      minWidth: '16px',
+                                      minHeight: '16px',
+                                      borderRadius: '2px',
+                                      objectFit: 'cover'
+                                    }}
+                                    onError={(e) => {
+                                      e.currentTarget.src = '/img/clients/default.jpg';
+                                    }}
+                                  />
+                                  {client}
+                                </div>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  side="top"
+                                  align="center"
+                                  sideOffset={5}
+                                  style={{
+                                    backgroundColor: '#1e293b',
+                                    color: '#f8fafc',
+                                    padding: '0.5rem 0.75rem',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.75rem',
+                                    maxWidth: '400px',
+                                    wordBreak: 'break-word',
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                                    zIndex: 50
+                                  }}
+                                >
+                                  {version}
+                                  <Tooltip.Arrow
+                                    style={{
+                                      fill: '#1e293b'
+                                    }}
+                                  />
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                        );
+                      })}
 
-                      {!run.versions && run.clients && run.clients.map((client) => (
-                        <div key={client} style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          fontSize: '0.75rem'
-                        }}>
-                          <div style={{
-                            fontWeight: '500',
-                            color: 'var(--text-primary, #111827)'
-                          }}>
+                      {!run.versions && run.clients && run.clients.map((client) => {
+                        const clientName = client.split('_')[0].toLowerCase();
+                        const logoPath = `/img/clients/${clientName}.jpg`;
+                        return (
+                          <div
+                            key={client}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.375rem',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: 'var(--badge-bg, #f3f4f6)',
+                              border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              color: 'var(--text-primary, #111827)'
+                            }}
+                          >
+                            <img
+                              src={logoPath}
+                              alt={`${client} logo`}
+                              style={{
+                                width: '16px',
+                                height: '16px',
+                                minWidth: '16px',
+                                minHeight: '16px',
+                                borderRadius: '2px',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.src = '/img/clients/default.jpg';
+                              }}
+                            />
                             {client}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Link>
                 </td>

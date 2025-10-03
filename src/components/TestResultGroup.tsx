@@ -47,17 +47,49 @@ const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory, directoryAdd
           color: 'var(--text-primary, #111827)',
           margin: 0,
           display: 'flex',
-          alignItems: 'center'
+          alignItems: 'center',
+          gap: '0.5rem',
+          flexWrap: 'wrap'
         }}>
           {groupBy === 'test' ? (
             <>
-              <span style={{ marginRight: '0.5rem' }}>🧪</span>
+              <span>🧪</span>
               {groupKey}
             </>
           ) : (
             <>
-              <span style={{ marginRight: '0.5rem' }}>💽</span>
-              {groupKey.replace(/\+/g, ', ')}
+              {groupKey.split('+').map((client, idx) => {
+                const clientName = client.trim().split('_')[0].toLowerCase();
+                const logoPath = `/img/clients/${clientName}.jpg`;
+                return (
+                  <div
+                    key={client}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.375rem'
+                    }}
+                  >
+                    <img
+                      src={logoPath}
+                      alt={`${client} logo`}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        minWidth: '16px',
+                        minHeight: '16px',
+                        borderRadius: '2px',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.src = '/img/clients/default.jpg';
+                      }}
+                    />
+                    <span>{client.trim()}</span>
+                    {idx < groupKey.split('+').length - 1 && <span>,</span>}
+                  </div>
+                );
+              })}
             </>
           )}
         </h4>

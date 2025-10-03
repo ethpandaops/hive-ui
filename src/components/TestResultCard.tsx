@@ -20,9 +20,6 @@ interface TestResultCardProps {
 const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResultCardProps) => {
   const statusStyles = getStatusStyles(run);
   const [openPopover, setOpenPopover] = useState<number | null>(null);
-  const displayName = groupBy === 'test'
-    ? run.clients.join(', ')  // When grouped by test, show clients
-    : run.name;
 
   // Remove .json extension for the URL
   const suiteid = run.fileName.replace(/\.json$/, '');
@@ -41,27 +38,25 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
     <Link
       to={`/test/${directory}/${suiteid}`}
       style={{
-        backgroundColor: 'var(--card-bg, #ffffff)',
+        backgroundColor: statusStyles.bg,
         borderRadius: '0.375rem',
         overflow: 'hidden',
-        border: '1px solid var(--border-color, rgba(229, 231, 235, 0.4))',
+        border: '1px solid var(--border-color, rgba(229, 231, 235, 0.6))',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
         position: 'relative',
-        background: statusStyles.pattern,
         textDecoration: 'none',
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+        transition: 'all 0.2s ease'
       }}
       onMouseOver={(e) => {
         e.currentTarget.style.transform = 'translateY(-1px)';
-        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+        e.currentTarget.style.border = '1px solid var(--border-color, rgba(229, 231, 235, 0.8))';
       }}
       onMouseOut={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
+        e.currentTarget.style.border = '1px solid var(--border-color, rgba(229, 231, 235, 0.6))';
         // Close popover when mouse leaves the card
         setOpenPopover(null);
       }}
@@ -87,11 +82,56 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
             fontWeight: '500',
             color: 'var(--text-primary, #111827)',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flex: 1
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            flexWrap: 'wrap'
           }}>
-            {displayName}
+            {groupBy === 'test' ? (
+              // When grouped by test, show clients with logos
+              run.clients.map((client, idx) => {
+                const clientName = client.split('_')[0].toLowerCase();
+                const logoPath = `/img/clients/${clientName}.jpg`;
+                return (
+                  <div
+                    key={client}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}
+                  >
+                    <img
+                      src={logoPath}
+                      alt={`${client} logo`}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        minWidth: '16px',
+                        minHeight: '16px',
+                        borderRadius: '2px',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.src = '/img/clients/default.jpg';
+                      }}
+                    />
+                    <span>{client}</span>
+                    {idx < run.clients.length - 1 && <span>,</span>}
+                  </div>
+                );
+              })
+            ) : (
+              // When grouped by client, show test name
+              <span style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {run.name}
+              </span>
+            )}
           </div>
           <div style={{
             display: 'flex',
