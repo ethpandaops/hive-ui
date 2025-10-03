@@ -1009,7 +1009,8 @@ const TestResultsTable = ({
                 key={`${run.name}-${runIndex}`}
                 style={{
                   backgroundColor: 'var(--card-bg, white)',
-                  transition: 'background-color 0.15s ease-in-out'
+                  transition: 'background-color 0.15s ease-in-out',
+                  position: 'relative'
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.backgroundColor = 'var(--row-hover-bg, rgba(249, 250, 251, 0.5))';
@@ -1060,11 +1061,12 @@ const TestResultsTable = ({
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   maxWidth: '30%'
                 }}>
-                  <div
+                  <Link
+                    to={testUrl}
                     style={{
                       display: 'block',
                       padding: '0.75rem 1rem',
-                      overflow: 'hidden'
+                      textDecoration: 'none'
                     }}
                   >
                     <div style={{
@@ -1080,8 +1082,7 @@ const TestResultsTable = ({
                           <Tooltip.Provider key={client} delayDuration={200}>
                             <Tooltip.Root>
                               <Tooltip.Trigger asChild>
-                                <Link
-                                  to={testUrl}
+                                <div
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -1094,7 +1095,8 @@ const TestResultsTable = ({
                                     fontWeight: '500',
                                     color: 'var(--text-primary, #111827)',
                                     cursor: 'pointer',
-                                    textDecoration: 'none'
+                                    position: 'relative',
+                                    zIndex: 1
                                   }}
                                 >
                                   <img
@@ -1113,7 +1115,7 @@ const TestResultsTable = ({
                                     }}
                                   />
                                   {client}
-                                </Link>
+                                </div>
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
@@ -1149,9 +1151,8 @@ const TestResultsTable = ({
                         const clientName = client.split('_')[0].toLowerCase();
                         const logoPath = `/img/clients/${clientName}.jpg`;
                         return (
-                          <Link
+                          <div
                             key={client}
-                            to={testUrl}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1162,9 +1163,7 @@ const TestResultsTable = ({
                               borderRadius: '0.375rem',
                               fontSize: '0.75rem',
                               fontWeight: '500',
-                              color: 'var(--text-primary, #111827)',
-                              cursor: 'pointer',
-                              textDecoration: 'none'
+                              color: 'var(--text-primary, #111827)'
                             }}
                           >
                             <img
@@ -1183,11 +1182,11 @@ const TestResultsTable = ({
                               }}
                             />
                             {client}
-                          </Link>
+                          </div>
                         );
                       })}
                     </div>
-                  </div>
+                  </Link>
                 </td>
                 <td style={{
                   padding: '0',
