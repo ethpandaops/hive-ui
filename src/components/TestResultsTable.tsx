@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 type SortField = 'date' | 'name' | 'total' | 'pass' | 'fail' | 'status' | null;
 type SortDirection = 'asc' | 'desc';
@@ -1059,62 +1060,94 @@ const TestResultsTable = ({
                   borderBottom: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
                   maxWidth: '30%'
                 }}>
-                  <Link
-                    to={testUrl}
+                  <div
                     style={{
                       display: 'block',
                       padding: '0.75rem 1rem',
-                      textDecoration: 'none',
                       overflow: 'hidden'
                     }}
                   >
                     <div style={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.5rem'
+                      flexWrap: 'wrap',
+                      gap: '0.375rem',
+                      alignItems: 'center'
                     }}>
                       {run.versions && Object.entries(run.versions).map(([client, version]) => (
-                        <div key={client} style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          fontSize: '0.75rem'
-                        }}>
-                          <div style={{
-                            fontWeight: '500',
-                            color: 'var(--text-primary, #111827)'
-                          }}>
-                            {client}
-                          </div>
-                          <div style={{
-                            color: 'var(--text-secondary, #6b7280)',
-                            fontSize: '0.7rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            maxWidth: '80ch'
-                          }}
-                          title={version}>
-                            {version}
-                          </div>
-                        </div>
+                        <Tooltip.Provider key={client} delayDuration={200}>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <Link
+                                to={testUrl}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '0.25rem 0.5rem',
+                                  backgroundColor: 'var(--badge-bg, #f3f4f6)',
+                                  border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '500',
+                                  color: 'var(--text-primary, #111827)',
+                                  cursor: 'pointer',
+                                  textDecoration: 'none'
+                                }}
+                              >
+                                {client}
+                              </Link>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                side="top"
+                                align="center"
+                                sideOffset={5}
+                                style={{
+                                  backgroundColor: '#1e293b',
+                                  color: '#f8fafc',
+                                  padding: '0.5rem 0.75rem',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.75rem',
+                                  maxWidth: '400px',
+                                  wordBreak: 'break-word',
+                                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                                  zIndex: 50
+                                }}
+                              >
+                                {version}
+                                <Tooltip.Arrow
+                                  style={{
+                                    fill: '#1e293b'
+                                  }}
+                                />
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                        </Tooltip.Provider>
                       ))}
 
                       {!run.versions && run.clients && run.clients.map((client) => (
-                        <div key={client} style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          fontSize: '0.75rem'
-                        }}>
-                          <div style={{
+                        <Link
+                          key={client}
+                          to={testUrl}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: 'var(--badge-bg, #f3f4f6)',
+                            border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.75rem',
                             fontWeight: '500',
-                            color: 'var(--text-primary, #111827)'
-                          }}>
-                            {client}
-                          </div>
-                        </div>
+                            color: 'var(--text-primary, #111827)',
+                            cursor: 'pointer',
+                            textDecoration: 'none'
+                          }}
+                        >
+                          {client}
+                        </Link>
                       ))}
                     </div>
-                  </Link>
+                  </div>
                 </td>
                 <td style={{
                   padding: '0',
