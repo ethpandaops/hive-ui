@@ -10,7 +10,14 @@
     "name": "fusaka",
     "address": "https://hive.ethpandaops.io/fusaka/",
     "github_workflows": [
-      "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/fusaka.yaml"
+      "https://github.com/ethpandaops/fusaka-devnets/actions/workflows/hive.yaml"
+    ]
+  },
+  {
+    "name": "bal",
+    "address": "https://hive.ethpandaops.io/bal/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/bal-devnets/actions/workflows/hive-devnet-0.yaml"
     ]
   }
 ]
