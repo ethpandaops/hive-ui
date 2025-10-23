@@ -187,6 +187,7 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
   const { isDarkMode } = useTheme();
   const [expandedRuns, setExpandedRuns] = useState<Set<number>>(new Set());
   const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
+  const [showAllWorkflows, setShowAllWorkflows] = useState(false);
 
   const { data: runningWorkflows = [], isLoading, error: runningError } = useQuery<GitHubWorkflowRun[]>({
     queryKey: ['workflows', groupName],
@@ -295,6 +296,14 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
   const workflowsToDisplay = runningWorkflows.length > 0 ? runningWorkflows : (mostRecentRun ? [mostRecentRun] : []);
   const isShowingActive = runningWorkflows.length > 0;
 
+  // Count total running jobs across all workflows
+  const totalRunningJobs = runningWorkflows.reduce((count, run) => {
+    const runningJobsInWorkflow = run.jobs?.filter(job =>
+      job.status === 'in_progress' || job.status === 'queued'
+    ) || [];
+    return count + runningJobsInWorkflow.length;
+  }, 0);
+
   return (
     <div style={{
       padding: '0.75rem 1.25rem',
@@ -329,7 +338,7 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
           color: isDarkMode ? '#f8fafc' : '#1e293b',
           margin: 0
         }}>
-          {isShowingActive ? `Active CI Jobs (${runningWorkflows.length})` : 'Most Recent CI Run'}
+          {isShowingActive ? `Active CI Jobs (${totalRunningJobs})` : 'Most Recent CI Run'}
         </h4>
       </div>
 
@@ -338,7 +347,7 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
         flexDirection: 'column',
         gap: '0.5rem'
       }}>
-        {workflowsToDisplay.map((run) => {
+        {(showAllWorkflows ? workflowsToDisplay : workflowsToDisplay.slice(0, 3)).map((run) => {
           const isExpanded = expandedRuns.has(run.id);
           const runningJobs = run.jobs?.filter(job => job.status === 'in_progress' || job.status === 'queued') || [];
           const completedJobs = run.jobs?.filter(job => job.status === 'completed') || [];
@@ -627,6 +636,62 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
             </div>
           );
         })}
+
+        {workflowsToDisplay.length > 3 && (
+          <button
+            onClick={() => setShowAllWorkflows(!showAllWorkflows)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem',
+              backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.8)',
+              border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+              borderRadius: '0.375rem',
+              cursor: 'pointer',
+              fontSize: '0.8125rem',
+              color: isDarkMode ? '#94a3b8' : '#64748b',
+              fontWeight: '500',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isDarkMode
+                ? 'rgba(51, 65, 85, 0.5)'
+                : 'rgba(243, 244, 246, 1)';
+              e.currentTarget.style.color = isDarkMode ? '#cbd5e1' : '#475569';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isDarkMode
+                ? 'rgba(30, 41, 59, 0.5)'
+                : 'rgba(255, 255, 255, 0.8)';
+              e.currentTarget.style.color = isDarkMode ? '#94a3b8' : '#64748b';
+            }}
+          >
+            {showAllWorkflows ? (
+              <>
+                <span>Show less</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path
+                    d="M8 6l-4 4h8l-4-4z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </>
+            ) : (
+              <>
+                <span>Show {workflowsToDisplay.length - 3} more workflow{workflowsToDisplay.length - 3 > 1 ? 's' : ''}</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path
+                    d="M8 10l-4-4h8l-4 4z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       <style>{`

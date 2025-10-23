@@ -79,10 +79,10 @@ export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: b
 
   try {
     // GitHub API endpoint for workflow runs
-    // If includeCompleted is true, fetch all recent runs, otherwise only in_progress
+    // If includeCompleted is true, fetch all recent runs (up to 20), otherwise only in_progress
     const apiUrl = includeCompleted
-      ? `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=1`
-      : `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=1&status=in_progress`;
+      ? `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=20`
+      : `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?per_page=20&status=in_progress`;
 
     const response = await fetch(apiUrl, {
       headers: getGitHubHeaders()
@@ -123,8 +123,9 @@ export async function fetchWorkflowRuns(workflowUrl: string, includeCompleted: b
 }
 
 // Fetch all running workflows for multiple workflow URLs
+// Also includes workflows completed within the past 24 hours
 export async function fetchAllRunningWorkflows(workflowUrls: string[]): Promise<GitHubWorkflowRun[]> {
-  const promises = workflowUrls.map(url => fetchWorkflowRuns(url));
+  const promises = workflowUrls.map(url => fetchWorkflowRuns(url, true));
   const results = await Promise.allSettled(promises);
 
   const allRuns: GitHubWorkflowRun[] = [];
@@ -134,10 +135,38 @@ export async function fetchAllRunningWorkflows(workflowUrls: string[]): Promise<
     }
   });
 
-  // Sort by created_at descending (newest first)
-  return allRuns.sort((a, b) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  // Calculate timestamp for 24 hours ago
+  const twentyFourHoursAgo = new Date();
+  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+  // Filter to include:
+  // 1. All running or queued workflows
+  // 2. Completed workflows from the past 24 hours
+  const filteredRuns = allRuns.filter(run => {
+    if (run.status === 'in_progress' || run.status === 'queued') {
+      return true;
+    }
+    if (run.status === 'completed') {
+      const updatedAt = new Date(run.updated_at);
+      return updatedAt >= twentyFourHoursAgo;
+    }
+    return false;
+  });
+
+  // Sort by:
+  // 1. Workflows with running/queued status first
+  // 2. Then by created_at descending (newest first)
+  return filteredRuns.sort((a, b) => {
+    const aIsRunning = a.status === 'in_progress' || a.status === 'queued';
+    const bIsRunning = b.status === 'in_progress' || b.status === 'queued';
+
+    // Running workflows come first
+    if (aIsRunning && !bIsRunning) return -1;
+    if (!aIsRunning && bIsRunning) return 1;
+
+    // If both running or both completed, sort by created_at (newest first)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 }
 
 // Fetch most recent workflow run (including completed ones)
