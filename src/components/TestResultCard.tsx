@@ -24,6 +24,9 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
   // Remove .json extension for the URL
   const suiteid = run.fileName.replace(/\.json$/, '');
 
+  // Check if this run is old (older than 9 days)
+  const isOld = isOldRun(run.start);
+
   // Fetch all test runs for the current directory
   const { data: allTestRuns } = useQuery({
     queryKey: ['testRuns', directoryAddress],
@@ -48,7 +51,9 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
         position: 'relative',
         textDecoration: 'none',
         cursor: 'pointer',
-        transition: 'all 0.2s ease'
+        transition: 'all 0.2s ease',
+        opacity: isOld ? 0.5 : 1,
+        filter: isOld ? 'grayscale(0.6)' : 'none'
       }}
       onMouseOver={(e) => {
         e.currentTarget.style.transform = 'translateY(-1px)';
@@ -420,6 +425,17 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
 const formatDate = (timestamp: string) => {
   const date = new Date(timestamp);
   return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
+};
+
+// Helper function to check if a run is older than 10 days
+const isOldRun = (timestamp: string): boolean => {
+  const runDate = new Date(timestamp);
+  if (!isValid(runDate)) return false;
+
+  const now = new Date();
+  const daysDifference = (now.getTime() - runDate.getTime()) / (1000 * 60 * 60 * 24);
+
+  return daysDifference > 10;
 };
 
 // Helper function to get past runs for a specific test/client combination
