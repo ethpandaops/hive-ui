@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchDirectories, fetchTestRuns } from '../services/api';
 import { Directory, TestRun } from '../types';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, isValid } from 'date-fns';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import * as jdenticon from 'jdenticon';
@@ -16,6 +16,17 @@ import WorkflowStatus from './WorkflowStatus';
 
 type GroupBy = 'test' | 'client';
 type SortBy = 'name' | 'coverage' | 'time';
+
+// Helper function to check if a run is older than 10 days
+const isOldRun = (timestamp: string): boolean => {
+  const runDate = new Date(timestamp);
+  if (!isValid(runDate)) return false;
+
+  const now = new Date();
+  const daysDifference = (now.getTime() - runDate.getTime()) / (1000 * 60 * 60 * 24);
+
+  return daysDifference > 10;
+};
 
 const GroupDetail = () => {
   const { isDarkMode } = useTheme();
@@ -51,6 +62,11 @@ const GroupDetail = () => {
     const stored = localStorage.getItem('favoriteClients');
     return stored ? JSON.parse(stored) : [];
   });
+  const [hideOldJobs, setHideOldJobs] = useState<boolean>(() => {
+    const urlHideOld = searchParams.get('hideOld');
+    // Default to true (enabled) if no URL param
+    return urlHideOld === null ? true : urlHideOld === 'true';
+  });
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const clientFilterRef = useRef<HTMLDetailsElement>(null);
@@ -61,7 +77,7 @@ const GroupDetail = () => {
   });
 
   // Function to update URL with current state
-  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy, newCollapsed?: boolean, newClients?: string[]) => {
+  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy, newCollapsed?: boolean, newClients?: string[], newHideOld?: boolean) => {
     const params = new URLSearchParams(searchParams);
 
     if (newSortBy !== undefined) {
@@ -82,6 +98,14 @@ const GroupDetail = () => {
         params.set('clients', newClients.join(','));
       } else {
         params.delete('clients');
+      }
+    }
+    if (newHideOld !== undefined) {
+      if (newHideOld === false) {
+        // Only add to URL if different from default (true)
+        params.set('hideOld', 'false');
+      } else {
+        params.delete('hideOld');
       }
     }
 
@@ -304,6 +328,12 @@ const GroupDetail = () => {
     return runs.filter(run =>
       run.clients.some(client => selectedClients.includes(client))
     );
+  };
+
+  // Filter out old test runs (older than 10 days)
+  const filterOldRuns = (runs: TestRun[]): TestRun[] => {
+    if (!hideOldJobs) return runs;
+    return runs.filter(run => !isOldRun(run.start));
   };
 
   // Sort test runs based on the selected criteria
@@ -798,6 +828,51 @@ const GroupDetail = () => {
                       </details>
                     </div>
 
+                    {/* Hide Old Jobs Toggle */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.375rem',
+                          cursor: 'pointer',
+                          backgroundColor: isInactive
+                            ? (isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'var(--warning-bg, rgba(255, 251, 235, 0.8))')
+                            : (isDarkMode ? '#334155' : 'var(--badge-bg, #f3f4f6)'),
+                          borderRadius: '0.375rem',
+                          padding: '0.35rem 0.6rem',
+                          border: isInactive
+                            ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                            : `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                          fontSize: '0.75rem',
+                          color: isInactive
+                            ? 'var(--warning-text, #b45309)'
+                            : (isDarkMode ? '#f8fafc' : '#1e293b'),
+                          userSelect: 'none'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={hideOldJobs}
+                          onChange={(e) => {
+                            const newHideOld = e.target.checked;
+                            setHideOldJobs(newHideOld);
+                            updateURL(sortBy, groupBy, isSummaryCollapsed, selectedClients, newHideOld);
+                          }}
+                          style={{
+                            cursor: 'pointer',
+                            width: '14px',
+                            height: '14px'
+                          }}
+                        />
+                        <span>Hide old jobs (&gt;10d)</span>
+                      </label>
+                    </div>
+
                     {/* Sort By Selector */}
                   <div style={{
                     display: 'flex',
@@ -954,7 +1029,7 @@ const GroupDetail = () => {
 
               {!isSummaryCollapsed && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {Object.entries(getGroupedRuns(filterByClients(testRuns), groupBy)).map(([groupKey, groupRuns]) => (
+                {Object.entries(getGroupedRuns(filterOldRuns(filterByClients(testRuns)), groupBy)).map(([groupKey, groupRuns]) => (
                   <TestResultGroup
                     key={groupKey}
                     groupKey={groupKey}
