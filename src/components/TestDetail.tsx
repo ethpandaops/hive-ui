@@ -1365,7 +1365,13 @@ const TestDetail = () => {
                         Client Configuration
                       </h4>
                       <ConfigViewer
-                        config={testDetail.runMetadata.clientConfig.content}
+                        config={(() => {
+                          const content = testDetail.runMetadata.clientConfig.content;
+                          if (content && typeof content === 'object' && 'clients' in content) {
+                            return (content as { clients: unknown }).clients;
+                          }
+                          return content;
+                        })()}
                         filePath={testDetail.runMetadata.clientConfig.filePath}
                         isDarkMode={isDarkMode}
                         collapsed={true}
