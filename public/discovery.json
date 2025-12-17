@@ -17,7 +17,7 @@
     "name": "bal",
     "address": "https://hive.ethpandaops.io/bal/",
     "github_workflows": [
-      "https://github.com/ethpandaops/bal-devnets/actions/workflows/hive-devnet-0.yaml"
+      "https://github.com/ethpandaops/bal-devnets/actions/workflows/hive-devnet-1.yaml"
     ]
   }
 ]
