@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchDirectories } from '../services/api';
@@ -14,9 +14,17 @@ import Footer from './Footer';
 import Breadcrumb from './Breadcrumb';
 import { useTheme } from '../contexts/useTheme';
 import { usePrismTheme } from './PrismTheme';
+import { VirtualizedLogContent } from './VirtualizedLogContent';
+import {
+  classifyLogFile,
+  splitIntoLines,
+  getFileSizeBytes,
+  type LogFileConfig,
+} from '../utils/logFileUtils';
+import { highlightLinesAsync } from '../utils/chunkHighlighter';
 
 const LogViewer = () => {
-  const params = useParams<{ group: string, suiteId: string, logFile: string }>();
+  const params = useParams<{ group: string; suiteId: string; logFile: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isDarkMode } = useTheme();
   const { codeClassName } = usePrismTheme(isDarkMode);
@@ -29,8 +37,15 @@ const LogViewer = () => {
   const [fileSize, setFileSize] = useState<string>('0 B');
   const [lineNumbers, setLineNumbers] = useState<string[]>([]);
 
+  // New state for virtualization and async highlighting
+  const [logConfig, setLogConfig] = useState<LogFileConfig | null>(null);
+  const [highlightedLines, setHighlightedLines] = useState<Map<number, string>>(new Map());
+  const [highlightProgress, setHighlightProgress] = useState<number>(0);
+  const [isHighlighting, setIsHighlighting] = useState<boolean>(false);
+
   // Create refs to access DOM elements directly
   const logContentRef = useRef<HTMLPreElement>(null);
+  const cancelHighlightRef = useRef<(() => void) | null>(null);
 
   const group = params.group || '';
   const suiteId = params.suiteId || '';
@@ -50,38 +65,83 @@ const LogViewer = () => {
   });
 
   // Get directory address for the group
-  const discoveryAddress = directories?.find(dir => dir.name === group)?.address || '';
+  const discoveryAddress = directories?.find((dir) => dir.name === group)?.address || '';
+
+  // Memoized log lines
+  const logLines = useMemo(() => {
+    if (!logContent) return [];
+    return splitIntoLines(logContent);
+  }, [logContent]);
 
   // Handle line number click
-  const handleLineClick = (lineNumber: number) => {
-    // Create new URLSearchParams to preserve existing parameters
-    const newParams = new URLSearchParams(searchParams);
-    // Update the line parameter
-    newParams.set('line', lineNumber.toString());
-    // Prevent page refresh by using replace: true
-    setSearchParams(newParams, { replace: true });
-    scrollToLine(lineNumber);
-  };
+  const handleLineClick = useCallback(
+    (lineNumber: number) => {
+      // Create new URLSearchParams to preserve existing parameters
+      const newParams = new URLSearchParams(searchParams);
+      // Update the line parameter
+      newParams.set('line', lineNumber.toString());
+      // Prevent page refresh by using replace: true
+      setSearchParams(newParams, { replace: true });
 
-  // Scroll to specified line number using element ID
-  const scrollToLine = (lineNumber: number) => {
-    const lineId = `L${lineNumber}`;
-    const lineElement = document.getElementById(lineId);
+      // For small files, scroll manually
+      if (!logConfig?.enableVirtualization) {
+        const lineId = `L${lineNumber}`;
+        const lineElement = document.getElementById(lineId);
+        if (lineElement) {
+          lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    },
+    [searchParams, setSearchParams, logConfig]
+  );
 
-    if (lineElement) {
-      lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
-
-  // Scroll to the selected line when URL params change or content loads
+  // Scroll to the selected line when URL params change or content loads (for small files)
   useEffect(() => {
-    if (!loading && selectedLine) {
+    if (!loading && selectedLine && !logConfig?.enableVirtualization) {
       // Ensure the DOM is ready before scrolling
       setTimeout(() => {
-        scrollToLine(selectedLine);
+        const lineId = `L${selectedLine}`;
+        const lineElement = document.getElementById(lineId);
+        if (lineElement) {
+          lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }, 100);
     }
-  }, [loading, selectedLine]);
+  }, [loading, selectedLine, logConfig]);
+
+  // Initialize async highlighting for large files
+  useEffect(() => {
+    if (logConfig?.enableVirtualization && logConfig?.enableHighlighting && logLines.length > 0) {
+      console.log('[DEBUG] Starting async highlighting for', logLines.length, 'lines');
+
+      // Cancel any previous highlighting
+      if (cancelHighlightRef.current) {
+        cancelHighlightRef.current();
+      }
+
+      setIsHighlighting(true);
+      setHighlightProgress(0);
+      setHighlightedLines(new Map());
+
+      // Start chunked highlighting
+      cancelHighlightRef.current = highlightLinesAsync(logLines, (update) => {
+        setHighlightedLines(update.highlightedLines);
+        setHighlightProgress(update.progress);
+
+        if (update.done) {
+          setIsHighlighting(false);
+          console.log('[DEBUG] Highlighting complete');
+        }
+      });
+    }
+
+    return () => {
+      if (cancelHighlightRef.current) {
+        cancelHighlightRef.current();
+        cancelHighlightRef.current = null;
+      }
+    };
+  }, [logConfig, logLines]);
 
   useEffect(() => {
     const fetchLogFile = async () => {
@@ -93,6 +153,8 @@ const LogViewer = () => {
       try {
         setLoading(true);
         setError(null);
+        setHighlightedLines(new Map());
+        setHighlightProgress(0);
 
         // Construct the URL to fetch the log file
         const logFilePath = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
@@ -114,16 +176,23 @@ const LogViewer = () => {
         setLogContent(text);
 
         // Calculate line count and file size
-        const lines = text.split('\n');
-        // Count properly even if the last line doesn't have a newline
-        const finalLineCount = text.endsWith('\n') ? lines.length - 1 : lines.length;
+        const lines = splitIntoLines(text);
+        const finalLineCount = lines.length;
         setLineCount(finalLineCount);
 
-        // Generate line numbers array
-        const numbers = Array.from({ length: finalLineCount }, (_, i) => (i + 1).toString());
-        setLineNumbers(numbers);
+        const sizeBytes = getFileSizeBytes(text);
+        setFileSize(formatBytes(sizeBytes));
 
-        setFileSize(formatBytes(new Blob([text]).size));
+        // Classify file and determine rendering mode
+        const config = classifyLogFile(finalLineCount, sizeBytes);
+        setLogConfig(config);
+        console.log(`[DEBUG] Log config: mode=${config.mode}, virtualization=${config.enableVirtualization}`);
+
+        // Generate line numbers array (for small files)
+        if (!config.enableVirtualization) {
+          const numbers = Array.from({ length: finalLineCount }, (_, i) => (i + 1).toString());
+          setLineNumbers(numbers);
+        }
 
         setLoading(false);
       } catch (err) {
@@ -268,6 +337,30 @@ const LogViewer = () => {
       color: var(--text-secondary);
       margin-left: 16px;
     }
+
+    .highlight-progress {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      background-color: ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'};
+      border-radius: 4px;
+      font-size: 13px;
+      color: ${isDarkMode ? '#93c5fd' : '#2563eb'};
+    }
+
+    .highlight-progress-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
     `;
 
     // Remove any existing styles
@@ -285,8 +378,8 @@ const LogViewer = () => {
     // Add to document
     document.head.appendChild(styleElement);
 
-    // Re-highlight when theme changes
-    if (logContent && !loading) {
+    // Re-highlight when theme changes (only for small files)
+    if (logContent && !loading && logConfig && !logConfig.enableVirtualization) {
       setTimeout(() => {
         // Disable Prism's line numbers plugin for our custom implementation
         Prism.plugins.lineNumbers = { disable: true };
@@ -301,16 +394,18 @@ const LogViewer = () => {
         document.head.removeChild(styleElement);
       }
     };
-  }, [isDarkMode, logContent, loading]);
+  }, [isDarkMode, logContent, loading, logConfig]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--bg-color)',
-      color: 'var(--text-primary)',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: 'var(--bg-color)',
+        color: 'var(--text-primary)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Header />
       <main style={{ flex: 1 }}>
         <div style={{ maxWidth: '100%', margin: '0 auto', padding: '0 1rem' }}>
@@ -320,22 +415,22 @@ const LogViewer = () => {
               { label: 'Home', link: '/' },
               { label: group, link: `/group/${group}` },
               { label: `Test Suite (${suiteId})`, link: `/test/${group}/${suiteId}` },
-              { label: decodeURIComponent(logFile).split('/').pop() || 'Log' }
+              { label: decodeURIComponent(logFile).split('/').pop() || 'Log' },
             ]}
           />
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              Loading log file...
-            </div>
+            <div style={{ textAlign: 'center', padding: '40px' }}>Loading log file...</div>
           ) : error ? (
-            <div style={{
-              padding: '16px',
-              color: 'var(--error-text)',
-              backgroundColor: 'var(--error-bg)',
-              borderRadius: '8px',
-              margin: '16px 0'
-            }}>
+            <div
+              style={{
+                padding: '16px',
+                color: 'var(--error-text)',
+                backgroundColor: 'var(--error-bg)',
+                borderRadius: '8px',
+                margin: '16px 0',
+              }}
+            >
               Error: {error}
             </div>
           ) : (
@@ -346,57 +441,76 @@ const LogViewer = () => {
                     {decodeURIComponent(logFile).split('/').pop()}
                   </h2>
                   <div className="log-stats">
-                    {lineCount} lines · {fileSize}
+                    {lineCount.toLocaleString()} lines · {fileSize}
                     {selectedLine && ` · Line ${selectedLine} selected`}
                     {beginByte !== null && endByte !== null && ` · Bytes ${beginByte}-${endByte}`}
                   </div>
                 </div>
-                <a
-                  href={getLogUrl(true)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="raw-log-link"
-                >
-                  Raw Log
-                </a>
-              </div>
-              <div className="log-content-wrapper">
-                <div
-                  className="line-numbers-wrapper"
-                  style={{
-                    paddingTop: '0.5em',
-                    paddingBottom: '0.5em',
-                    overflowY: 'hidden',
-                    color: isDarkMode ? '#999' : '#666',
-                    userSelect: 'none'
-                  }}
-                >
-                  {lineNumbers.map(num => (
-                    <div
-                      key={num}
-                      id={`L${num}`}
-                      className={`line-number ${selectedLine === parseInt(num) ? 'active' : ''}`}
-                      onClick={() => handleLineClick(parseInt(num))}
-                    >
-                      {num}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {isHighlighting && (
+                    <div className="highlight-progress">
+                      <div className="highlight-progress-spinner" />
+                      <span>Applying syntax highlighting... {highlightProgress}%</span>
                     </div>
-                  ))}
+                  )}
+                  <a
+                    href={getLogUrl(true)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="raw-log-link"
+                  >
+                    Raw Log
+                  </a>
                 </div>
-                <pre
-                  ref={logContentRef}
-                  className="log-content"
-                  style={{
-                    marginTop: 0,
-                    paddingLeft: '65px',
-                    paddingTop: '0.5em',
-                    paddingBottom: '0.5em'
-                  }}
-                >
-                  <code className={`language-log ${codeClassName}`}>
-                    {logContent}
-                  </code>
-                </pre>
               </div>
+
+              {logConfig?.enableVirtualization ? (
+                <VirtualizedLogContent
+                  lines={logLines}
+                  highlightedLines={highlightedLines}
+                  selectedLine={selectedLine}
+                  onLineClick={handleLineClick}
+                  isDarkMode={isDarkMode}
+                  scrollToLine={selectedLine}
+                  codeClassName={codeClassName}
+                />
+              ) : (
+                <div className="log-content-wrapper">
+                  <div
+                    className="line-numbers-wrapper"
+                    style={{
+                      paddingTop: '0.5em',
+                      paddingBottom: '0.5em',
+                      overflowY: 'hidden',
+                      color: isDarkMode ? '#999' : '#666',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {lineNumbers.map((num) => (
+                      <div
+                        key={num}
+                        id={`L${num}`}
+                        className={`line-number ${selectedLine === parseInt(num) ? 'active' : ''}`}
+                        onClick={() => handleLineClick(parseInt(num))}
+                      >
+                        {num}
+                      </div>
+                    ))}
+                  </div>
+                  <pre
+                    ref={logContentRef}
+                    className="log-content"
+                    style={{
+                      marginTop: 0,
+                      paddingLeft: '65px',
+                      paddingTop: '0.5em',
+                      paddingBottom: '0.5em',
+                    }}
+                  >
+                    <code className={`language-log ${codeClassName}`}>{logContent}</code>
+                  </pre>
+                </div>
+              )}
             </div>
           )}
         </div>
