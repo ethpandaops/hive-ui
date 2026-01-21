@@ -15,9 +15,11 @@ interface TestResultsTableProps {
   testNameFilter?: string;
   clientFilter?: string;
   selectedClients?: string[];
+  selectedSuites?: string[];
   setTestNameFilter?: (value: string) => void;
   setClientFilter?: (value: string) => void;
   onClientSelectChange?: (clients: string[]) => void;
+  onSuiteSelectChange?: (suites: string[]) => void;
 }
 
 const TestResultsTable = ({
@@ -26,7 +28,9 @@ const TestResultsTable = ({
   testNameFilter = '',
   clientFilter = '',
   selectedClients = [],
-  onClientSelectChange
+  selectedSuites = [],
+  onClientSelectChange,
+  onSuiteSelectChange
 }: TestResultsTableProps) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -185,6 +189,10 @@ const TestResultsTable = ({
     const matchesSelectedClients = selectedClients.length === 0 ||
       run.clients.some(client => selectedClients.includes(client));
 
+    // Apply selectedSuites filter (from the dropdown)
+    const matchesSelectedSuites = selectedSuites.length === 0 ||
+      selectedSuites.includes(run.name);
+
     // Apply status filter (matching statusHelpers.ts logic)
     let matchesStatus = true;
     if (statusFilter === 'success') {
@@ -197,7 +205,7 @@ const TestResultsTable = ({
       matchesStatus = !run.timeout && (run.passes === 0 || run.passes / run.ntests <= 0.5) && run.fails > 0;
     }
 
-    return matchesTestName && matchesTestNameSelect && matchesClient && matchesSelectedClients && matchesStatus;
+    return matchesTestName && matchesTestNameSelect && matchesClient && matchesSelectedClients && matchesSelectedSuites && matchesStatus;
   });
 
   // Sort runs by start time (newest first) for each test/client combination
@@ -339,6 +347,7 @@ const TestResultsTable = ({
   // Check if any filters are active
   const hasActiveFilters = testNameSelectFilter !== 'all' ||
                           selectedClients.length > 0 ||
+                          selectedSuites.length > 0 ||
                           statusFilter !== 'all';
 
   // Clear all filters
@@ -347,6 +356,9 @@ const TestResultsTable = ({
     setStatusFilter('all');
     if (onClientSelectChange) {
       onClientSelectChange([]);
+    }
+    if (onSuiteSelectChange) {
+      onSuiteSelectChange([]);
     }
     setCurrentPage(1); // Reset to first page when clearing filters
   };
@@ -670,6 +682,57 @@ const TestResultsTable = ({
                     e.currentTarget.style.color = 'var(--text-secondary, #6b7280)';
                   }}
                   title={`Remove ${client} filter`}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {selectedSuites.map(suite => (
+              <div
+                key={suite}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  padding: '0.25rem 0.5rem',
+                  backgroundColor: 'var(--card-bg, white)',
+                  border: '1px solid var(--border-color, rgba(229, 231, 235, 0.8))',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem'
+                }}
+              >
+                <span style={{
+                  color: 'var(--text-secondary, #6b7280)',
+                  fontWeight: '500'
+                }}>
+                  Suite:
+                </span>
+                <span style={{ color: 'var(--text-primary, #111827)' }}>
+                  {suite}
+                </span>
+                <button
+                  onClick={() => {
+                    if (onSuiteSelectChange) {
+                      onSuiteSelectChange(selectedSuites.filter(s => s !== suite));
+                    }
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'var(--text-secondary, #6b7280)',
+                    fontSize: '0.875rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--error-text, #b91c1c)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text-secondary, #6b7280)';
+                  }}
+                  title={`Remove ${suite} filter`}
                 >
                   ✕
                 </button>

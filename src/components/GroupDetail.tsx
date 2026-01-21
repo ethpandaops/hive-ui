@@ -62,6 +62,13 @@ const GroupDetail = () => {
     const stored = localStorage.getItem('favoriteClients');
     return stored ? JSON.parse(stored) : [];
   });
+  const [selectedSuites, setSelectedSuites] = useState<string[]>(() => {
+    const urlSuites = searchParams.get('suites');
+    if (urlSuites) {
+      return urlSuites.split(',').filter(s => s.length > 0);
+    }
+    return [];
+  });
   const [hideOldJobs, setHideOldJobs] = useState<boolean>(() => {
     const urlHideOld = searchParams.get('hideOld');
     // Default to true (enabled) if no URL param
@@ -70,6 +77,7 @@ const GroupDetail = () => {
   const [directoryAddresses, setDirectoryAddresses] = useState<Record<string, string>>({});
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const clientFilterRef = useRef<HTMLDetailsElement>(null);
+  const suiteFilterRef = useRef<HTMLDetailsElement>(null);
 
   // Initialize collapsed state from URL
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState<boolean>(() => {
@@ -77,7 +85,7 @@ const GroupDetail = () => {
   });
 
   // Function to update URL with current state
-  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy, newCollapsed?: boolean, newClients?: string[], newHideOld?: boolean) => {
+  const updateURL = (newSortBy?: SortBy, newGroupBy?: GroupBy, newCollapsed?: boolean, newClients?: string[], newHideOld?: boolean, newSuites?: string[]) => {
     const params = new URLSearchParams(searchParams);
 
     if (newSortBy !== undefined) {
@@ -108,6 +116,13 @@ const GroupDetail = () => {
         params.delete('hideOld');
       }
     }
+    if (newSuites !== undefined) {
+      if (newSuites.length > 0) {
+        params.set('suites', newSuites.join(','));
+      } else {
+        params.delete('suites');
+      }
+    }
 
     // Remove default values to keep URL clean
     if (params.get('sort') === 'name') {
@@ -126,13 +141,13 @@ const GroupDetail = () => {
   // Update sort by and URL
   const handleSortByChange = (newSortBy: SortBy) => {
     setSortBy(newSortBy);
-    updateURL(newSortBy, groupBy);
+    updateURL(newSortBy, groupBy, isSummaryCollapsed, selectedClients, hideOldJobs, selectedSuites);
   };
 
   // Update group by and URL
   const handleGroupByChange = (newGroupBy: GroupBy) => {
     setGroupBy(newGroupBy);
-    updateURL(sortBy, newGroupBy);
+    updateURL(sortBy, newGroupBy, isSummaryCollapsed, selectedClients, hideOldJobs, selectedSuites);
   };
 
   // Use effect for responsive design
@@ -160,16 +175,19 @@ const GroupDetail = () => {
       // Favorites were loaded, update URL
       const newGroupBy = 'client'; // Auto-switch to group by client when favorites are loaded
       setGroupBy(newGroupBy);
-      updateURL(sortBy, newGroupBy, isSummaryCollapsed, selectedClients);
+      updateURL(sortBy, newGroupBy, isSummaryCollapsed, selectedClients, hideOldJobs, selectedSuites);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
-  // Close client filter dropdown when clicking outside
+  // Close filter dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (clientFilterRef.current && !clientFilterRef.current.contains(event.target as Node)) {
         clientFilterRef.current.removeAttribute('open');
+      }
+      if (suiteFilterRef.current && !suiteFilterRef.current.contains(event.target as Node)) {
+        suiteFilterRef.current.removeAttribute('open');
       }
     };
 
@@ -322,12 +340,27 @@ const GroupDetail = () => {
     return Array.from(clientSet).sort();
   };
 
+  // Extract all unique test suites from test runs
+  const getAllSuites = (runs: TestRun[]): string[] => {
+    const suiteSet = new Set<string>();
+    runs.forEach(run => {
+      suiteSet.add(run.name);
+    });
+    return Array.from(suiteSet).sort();
+  };
+
   // Filter test runs by selected clients
   const filterByClients = (runs: TestRun[]): TestRun[] => {
     if (selectedClients.length === 0) return runs;
     return runs.filter(run =>
       run.clients.some(client => selectedClients.includes(client))
     );
+  };
+
+  // Filter test runs by selected suites
+  const filterBySuites = (runs: TestRun[]): TestRun[] => {
+    if (selectedSuites.length === 0) return runs;
+    return runs.filter(run => selectedSuites.includes(run.name));
   };
 
   // Filter out old test runs (older than 10 days)
@@ -444,6 +477,9 @@ const GroupDetail = () => {
   // Get all available clients
   const availableClients = getAllClients(testRuns);
 
+  // Get all available suites
+  const availableSuites = getAllSuites(testRuns);
+
   // Toggle client selection
   const toggleClient = (client: string) => {
     setSelectedClients(prev => {
@@ -457,7 +493,7 @@ const GroupDetail = () => {
         setGroupBy(newGroupBy);
       }
 
-      updateURL(sortBy, newGroupBy, isSummaryCollapsed, newClients);
+      updateURL(sortBy, newGroupBy, isSummaryCollapsed, newClients, hideOldJobs, selectedSuites);
       return newClients;
     });
   };
@@ -465,7 +501,7 @@ const GroupDetail = () => {
   // Clear all client filters
   const clearClientFilters = () => {
     setSelectedClients([]);
-    updateURL(sortBy, groupBy, isSummaryCollapsed, []);
+    updateURL(sortBy, groupBy, isSummaryCollapsed, [], hideOldJobs, selectedSuites);
   };
 
   // Handle client selection change from table
@@ -478,7 +514,7 @@ const GroupDetail = () => {
       setGroupBy(newGroupBy);
     }
 
-    updateURL(sortBy, newGroupBy, isSummaryCollapsed, clients);
+    updateURL(sortBy, newGroupBy, isSummaryCollapsed, clients, hideOldJobs, selectedSuites);
   };
 
   // Save current selection as favorites
@@ -491,6 +527,30 @@ const GroupDetail = () => {
   const clearFavorites = () => {
     localStorage.removeItem('favoriteClients');
     setFavoriteClients([]);
+  };
+
+  // Toggle suite selection
+  const toggleSuite = (suite: string) => {
+    setSelectedSuites(prev => {
+      const newSuites = prev.includes(suite)
+        ? prev.filter(s => s !== suite)
+        : [...prev, suite];
+
+      updateURL(sortBy, groupBy, isSummaryCollapsed, selectedClients, hideOldJobs, newSuites);
+      return newSuites;
+    });
+  };
+
+  // Clear all suite filters
+  const clearSuiteFilters = () => {
+    setSelectedSuites([]);
+    updateURL(sortBy, groupBy, isSummaryCollapsed, selectedClients, hideOldJobs, []);
+  };
+
+  // Handle suite selection change from table
+  const handleSuiteSelectChange = (suites: string[]) => {
+    setSelectedSuites(suites);
+    updateURL(sortBy, groupBy, isSummaryCollapsed, selectedClients, hideOldJobs, suites);
   };
 
   return (
@@ -577,7 +637,7 @@ const GroupDetail = () => {
                     onClick={() => {
                       const newCollapsed = !isSummaryCollapsed;
                       setIsSummaryCollapsed(newCollapsed);
-                      updateURL(sortBy, groupBy, newCollapsed);
+                      updateURL(sortBy, groupBy, newCollapsed, selectedClients, hideOldJobs, selectedSuites);
                     }}
                     style={{
                       background: 'none',
@@ -828,6 +888,143 @@ const GroupDetail = () => {
                       </details>
                     </div>
 
+                    {/* Test Suite Filter */}
+                    <div style={{ position: 'relative' }}>
+                      <details
+                        ref={suiteFilterRef}
+                        style={{
+                          position: 'relative'
+                        }}
+                      >
+                        <summary
+                          style={{
+                            listStyle: 'none',
+                            cursor: 'pointer',
+                            userSelect: 'none'
+                          }}
+                        >
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            backgroundColor: isInactive
+                              ? (isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'var(--warning-bg, rgba(255, 251, 235, 0.8))')
+                              : (isDarkMode ? '#334155' : 'var(--badge-bg, #f3f4f6)'),
+                            borderRadius: '0.375rem',
+                            padding: '0.25rem 0.5rem',
+                            border: isInactive
+                              ? '1px solid var(--warning-border, rgba(245, 158, 11, 0.3))'
+                              : `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            gap: '0.5rem',
+                            minWidth: '150px'
+                          }}>
+                            <span style={{
+                              fontSize: '0.75rem',
+                              color: isInactive
+                                ? 'var(--warning-text, #b45309)'
+                                : (isDarkMode ? '#f8fafc' : '#1e293b'),
+                              flex: 1
+                            }}>
+                              <span style={{ fontWeight: '600' }}>Test Suite:</span> {selectedSuites.length === 0 ? 'All' : selectedSuites.length === 1 ? selectedSuites[0] : selectedSuites.length}
+                            </span>
+                            <span style={{
+                              fontSize: '0.75rem',
+                              color: isInactive
+                                ? 'var(--warning-text, #b45309)'
+                                : (isDarkMode ? '#f8fafc' : 'var(--text-primary, #111827)'),
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}>
+                              ▼
+                            </span>
+                          </div>
+                        </summary>
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '0.25rem',
+                            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                            border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            borderRadius: '0.375rem',
+                            boxShadow: isDarkMode
+                              ? '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                              : '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                            padding: '0.5rem',
+                            zIndex: 10,
+                            minWidth: '250px',
+                            maxHeight: '400px',
+                            overflowY: 'auto'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '0.5rem',
+                              paddingBottom: '0.5rem',
+                              borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            }}>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                              }}>
+                                Filter by Test Suite
+                              </span>
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                {selectedSuites.length > 0 && (
+                                  <button
+                                    onClick={clearSuiteFilters}
+                                    style={{
+                                      fontSize: '0.625rem',
+                                      color: '#3b82f6',
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: '0.125rem 0.25rem',
+                                    }}
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {availableSuites.map(suite => (
+                              <label
+                                key={suite}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  padding: '0.375rem 0.25rem',
+                                  cursor: 'pointer',
+                                  borderRadius: '0.25rem',
+                                  fontSize: '0.75rem',
+                                  color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = isDarkMode ? '#334155' : '#f3f4f6';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSuites.includes(suite)}
+                                  onChange={() => toggleSuite(suite)}
+                                  style={{
+                                    cursor: 'pointer',
+                                    width: '14px',
+                                    height: '14px',
+                                  }}
+                                />
+                                <span style={{ flex: 1 }}>{suite}</span>
+                              </label>
+                            ))}
+                          </div>
+                      </details>
+                    </div>
+
                     {/* Hide Old Jobs Toggle */}
                     <div style={{
                       display: 'flex',
@@ -861,7 +1058,7 @@ const GroupDetail = () => {
                           onChange={(e) => {
                             const newHideOld = e.target.checked;
                             setHideOldJobs(newHideOld);
-                            updateURL(sortBy, groupBy, isSummaryCollapsed, selectedClients, newHideOld);
+                            updateURL(sortBy, groupBy, isSummaryCollapsed, selectedClients, newHideOld, selectedSuites);
                           }}
                           style={{
                             cursor: 'pointer',
@@ -1029,7 +1226,7 @@ const GroupDetail = () => {
 
               {!isSummaryCollapsed && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {Object.entries(getGroupedRuns(filterOldRuns(filterByClients(testRuns)), groupBy)).map(([groupKey, groupRuns]) => (
+                {Object.entries(getGroupedRuns(filterOldRuns(filterBySuites(filterByClients(testRuns))), groupBy)).map(([groupKey, groupRuns]) => (
                   <TestResultGroup
                     key={groupKey}
                     groupKey={groupKey}
@@ -1051,9 +1248,11 @@ const GroupDetail = () => {
               testNameFilter={testNameFilter}
               clientFilter={clientFilter}
               selectedClients={selectedClients}
+              selectedSuites={selectedSuites}
               setTestNameFilter={setTestNameFilter}
               setClientFilter={setClientFilter}
               onClientSelectChange={handleClientSelectChange}
+              onSuiteSelectChange={handleSuiteSelectChange}
             />
           </div>
         </div>
