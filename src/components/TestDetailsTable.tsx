@@ -5,6 +5,8 @@ import { format, isValid } from 'date-fns';
 import { useTheme } from '../contexts/useTheme';
 import DOMPurify from 'dompurify';
 import LogExcerpt from './LogExcerpt';
+import { calculateMedian, isBenchmarkIgnoredTest } from '../constants/benchmark';
+import { formatMs } from '../utils/formatMs';
 
 interface TestDetailsTableProps {
   testDetail: TestDetail & {
@@ -36,6 +38,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
   const [localExpandedTestId, setLocalExpandedTestId] = useState<string | null>(null);
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showBenchmark, setShowBenchmark] = useState(false);
   const initialScrollAppliedRef = useRef(false);
 
   // Use either the props state or local state
@@ -70,6 +73,32 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
   const startIndex = (currentPage - 1) * selectedEntryCount;
   const endIndex = startIndex + selectedEntryCount;
   const displayedTestCases = sortedTestCases.slice(startIndex, endIndex);
+
+  // Benchmark stats computed from already-loaded testCases
+  const benchmarkStats = React.useMemo(() => {
+    if (!testDetail) return null;
+    const cases = Object.entries(testDetail.testCases);
+    if (cases.length === 0) return null;
+
+    const withDuration = cases
+      .filter(([, c]) => !isBenchmarkIgnoredTest(c.name) && c.summaryResult.pass)
+      .map(([id, c]) => {
+        const startMs = new Date(c.start).getTime();
+        const endMs = new Date(c.end).getTime();
+        const durationMs = endMs - startMs;
+        return { id, name: c.name, durationMs: durationMs >= 0 ? durationMs : 0 };
+      });
+    if (withDuration.length === 0) return null;
+
+    const sorted = [...withDuration].sort((a, b) => a.durationMs - b.durationMs);
+    const totalCumulativeMs = sorted.reduce((sum, c) => sum + c.durationMs, 0);
+    const meanMs = totalCumulativeMs / sorted.length;
+    const medianMs = calculateMedian(sorted.map((testCase) => testCase.durationMs));
+    const p95Ms = sorted[Math.floor(sorted.length * 0.95)].durationMs;
+    const slowest = sorted.slice(-5).reverse();
+
+    return { meanMs, medianMs, p95Ms, totalCumulativeMs, slowest, includedCount: sorted.length };
+  }, [testDetail]);
 
   // Use React Router's useSearchParams for URL parameter manipulation
   const [searchParams, setSearchParams] = useSearchParams();
@@ -627,6 +656,154 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
           </div>
         )}
       </div>
+
+      {/* Benchmark Summary */}
+      {benchmarkStats && (
+        <div style={{ ...cardStyle, marginBottom: '1.5rem', padding: 0, overflow: 'hidden' }}>
+          <div
+            style={{
+              padding: '0.75rem 1rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: showBenchmark ? `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` : 'none',
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+            onClick={() => setShowBenchmark(v => !v)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{
+                transition: 'transform 0.2s ease',
+                transform: showBenchmark ? 'rotate(0deg)' : 'rotate(-90deg)',
+                color: isDarkMode ? '#94a3b8' : '#64748b',
+              }}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '1.1rem', height: '1.1rem' }}>
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>Benchmark Summary</h3>
+            </div>
+            <div style={{ fontSize: '0.75rem', ...lightTextStyle }}>
+              {benchmarkStats.includedCount} passing tests
+            </div>
+          </div>
+
+          {showBenchmark && (
+            <div style={{ padding: '1rem' }}>
+              {/* Stat tiles */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                gap: '0.75rem',
+                marginBottom: '1.25rem',
+              }}>
+                {[
+                  { label: 'Cumulative Time', value: formatMs(benchmarkStats.totalCumulativeMs), title: 'Sum of all passing, non-ignored test case durations' },
+                  { label: 'Mean', value: formatMs(benchmarkStats.meanMs), title: 'Average test case duration' },
+                  { label: 'Median', value: formatMs(benchmarkStats.medianMs), title: 'Median test case duration (p50)' },
+                  { label: 'p95', value: formatMs(benchmarkStats.p95Ms), title: '95th percentile test case duration' },
+                ].map(({ label, value, title }) => (
+                  <div
+                    key={label}
+                    title={title}
+                    style={{
+                      backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+                      border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                      borderRadius: '0.375rem',
+                      padding: '0.625rem 0.75rem',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', ...lightTextStyle, marginBottom: '0.25rem' }}>
+                      {label}
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700', fontFamily: 'monospace' }}>
+                      {value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Slowest tests */}
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', ...lightTextStyle, marginBottom: '0.5rem' }}>
+                  Slowest Tests
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                  {benchmarkStats.slowest.map((tc, i) => {
+                    const pct = benchmarkStats.slowest[0]?.durationMs
+                      ? (tc.durationMs / benchmarkStats.slowest[0].durationMs) * 100
+                      : 0;
+                    return (
+                      <div
+                        key={tc.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => {
+                          const testIndex = sortedTestCases.findIndex(([id]) => id === tc.id);
+                          const targetPage = testIndex !== -1
+                            ? Math.floor(testIndex / selectedEntryCount) + 1
+                            : 1;
+                          setCurrentPage(targetPage);
+                          setExpandedTestId(tc.id);
+                          setShowBenchmark(false);
+                          const newParams = new URLSearchParams(searchParams);
+                          newParams.set('page', targetPage.toString());
+                          newParams.set('testnumber', tc.id);
+                          setSearchParams(newParams, { replace: true });
+                          setTimeout(() => {
+                            const el = document.getElementById(`test-row-${tc.id}`);
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 50);
+                        }}
+                        title="Click to jump to this test"
+                      >
+                        <div style={{ width: '1.25rem', textAlign: 'right', flexShrink: 0, ...lightTextStyle, fontSize: '0.7rem' }}>
+                          {i + 1}.
+                        </div>
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tc.name}>
+                            {tc.name}
+                          </div>
+                          <div style={{
+                            marginTop: '0.2rem',
+                            height: '4px',
+                            borderRadius: '2px',
+                            backgroundColor: isDarkMode ? 'rgba(71, 85, 105, 0.4)' : 'rgba(226, 232, 240, 1)',
+                            overflow: 'hidden',
+                          }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${Math.min(pct, 100)}%`,
+                              backgroundColor: i === 0
+                                ? (isDarkMode ? '#f87171' : '#ef4444')
+                                : i === 1
+                                  ? (isDarkMode ? '#fb923c' : '#f97316')
+                                  : (isDarkMode ? '#fbbf24' : '#f59e0b'),
+                              borderRadius: '2px',
+                            }} />
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, fontFamily: 'monospace', fontWeight: '600', fontSize: '0.8rem' }}>
+                          {formatMs(tc.durationMs)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{ fontSize: '0.65rem', ...lightTextStyle, textAlign: 'right', marginTop: '0.5rem' }}>
+                Timing includes only passing, non-ignored tests
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tests table */}
       <div style={{

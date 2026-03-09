@@ -1,5 +1,6 @@
 import { TestRun } from '../types';
 import TestResultCard from './TestResultCard';
+import ClientBenchmarkCard from './ClientBenchmarkCard';
 
 type GroupBy = 'test' | 'client';
 
@@ -112,6 +113,14 @@ const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory, directoryAdd
             index={index}
           />
         ))}
+        {groupBy === 'test' && groupRuns.length >= 2 && (
+          <ClientBenchmarkCard
+            groupKey={groupKey}
+            groupRuns={groupRuns}
+            directory={directory}
+            directoryAddress={directoryAddress}
+          />
+        )}
       </div>
     </div>
   );
