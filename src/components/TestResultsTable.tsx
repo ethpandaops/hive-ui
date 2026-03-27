@@ -65,7 +65,7 @@ const TestResultsTable = ({
     return saved ? JSON.parse(saved) : {
       date: 50,
       name: 50,
-      clients: 4500,
+      clients: 250,
       total: 100,
       pass: 100,
       fail: 100,

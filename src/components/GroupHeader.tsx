@@ -134,7 +134,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                   let barColor;
                   if (run.fails === 0) {
                     barColor = 'var(--success-border, #10b981)';
-                  } else if (run.passes > 0 && run.passes / run.ntests > 0.5) {
+                  } else if (run.ntests > 0 && run.fails / run.ntests < 0.01) {
                     barColor = 'var(--warning-border, #f59e0b)';
                   } else {
                     barColor = 'var(--error-border, #ef4444)';
@@ -144,7 +144,9 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                     <div
                       key={`${run.name}-${index}`}
                       style={{
-                        width: '4px',
+                        flex: 1,
+                        minWidth: '2px',
+                        maxWidth: '8px',
                         height: '8px',
                         backgroundColor: barColor,
                         borderRadius: '1px'
@@ -193,7 +195,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                      style={{ width: '0.75rem', height: '0.75rem', color: 'var(--warning-border, #f59e0b)' }}>
                   <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                 </svg>
-                <span style={{ fontWeight: '500' }}>{testRuns.filter(r => r.fails > 0 && r.passes > 0 && r.passes / r.ntests > 0.5).length}</span>
+                <span style={{ fontWeight: '500' }}>{testRuns.filter(r => r.fails > 0 && r.ntests > 0 && r.fails / r.ntests < 0.01).length}</span>
               </div>
               <div style={{
                 display: 'flex',
@@ -208,7 +210,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
                      style={{ width: '0.75rem', height: '0.75rem', color: 'var(--error-border, #ef4444)' }}>
                   <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
-                <span style={{ fontWeight: '500' }}>{testRuns.filter(r => r.fails > 0 && r.passes / r.ntests <= 0.5).length}</span>
+                <span style={{ fontWeight: '500' }}>{testRuns.filter(r => r.fails > 0 && (r.ntests === 0 || r.fails / r.ntests >= 0.01)).length}</span>
               </div>
             </div>
           </div>

@@ -178,7 +178,6 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
 
               // Determine trend arrow
               let trendIndicator = '';
-              let trendColor = 'transparent';
 
               if (prevRun && !isCurrentRun) {
                 // Only show arrows when there's a meaningful change (>1% difference)
@@ -187,10 +186,8 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                 if (percentDiff >= 1) {
                   if (passRatio > prevPassRatio) {
                     trendIndicator = '↑';
-                    trendColor = 'var(--success-text, #047857)';
                   } else if (passRatio < prevPassRatio) {
                     trendIndicator = '↓';
-                    trendColor = 'var(--error-text, #b91c1c)';
                   }
                   // No arrow shown if exactly equal or minimal difference
                 }
@@ -198,10 +195,11 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
 
               let barColor;
               let barGradient;
+              const failRatio = pastRun.ntests > 0 ? pastRun.fails / pastRun.ntests : 0;
               if (pastRun.fails === 0) {
                 barColor = 'var(--success-border, #10b981)';
                 barGradient = 'linear-gradient(180deg, #34d399 0%, #10b981 100%)';
-              } else if (passRatio > 0.5) {
+              } else if (failRatio < 0.01) {
                 barColor = 'var(--warning-border, #f59e0b)';
                 barGradient = 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%)';
               } else {
@@ -249,14 +247,14 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                       {trendIndicator && (
                         <div style={{
                           position: 'absolute',
-                          top: '-3px',
+                          top: '50%',
                           left: '50%',
-                          transform: 'translateX(-50%)',
-                          fontSize: '0.7rem',
+                          transform: 'translate(-50%, -50%)',
+                          fontSize: '0.6rem',
                           fontWeight: '700',
-                          color: trendColor,
+                          color: 'white',
+                          textShadow: '0 0 2px rgba(0, 0, 0, 0.5)',
                           lineHeight: 1,
-                          textShadow: '0 0 1px var(--card-bg, white)',
                           zIndex: 2
                         }}>
                           {trendIndicator}
@@ -267,28 +265,13 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                           position: 'absolute',
                           bottom: 0,
                           width: '100%',
-                          height: `${Math.max(passRatio * 100, 5)}%`,
+                          height: '100%',
                           background: barGradient,
-                          borderTopLeftRadius: '2px',
-                          borderTopRightRadius: '2px',
-                          boxShadow: `0 -1px 2px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)`,
                           border: `1px solid ${barColor}`,
-                          borderBottom: 'none'
+                          borderBottom: 'none',
+                          borderRadius: '2px',
                         }}
                       />
-                      {/* Small highlight at top of bar for 3D effect */}
-                      {passRatio > 0.1 && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            bottom: `calc(${Math.max(passRatio * 100, 5)}% - 2px)`,
-                            width: '80%',
-                            height: '1px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                            borderRadius: '1px'
-                          }}
-                        />
-                      )}
                     </div>
                   </Popover.Trigger>
 
@@ -390,10 +373,10 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
               borderRadius: '0.25rem',
               color: 'var(--error-text, #b91c1c)',
               fontWeight: '600',
-              border: run.passes / run.ntests > 0.5
+              border: run.ntests > 0 && run.fails / run.ntests < 0.01
                 ? '1px solid var(--warning-border, #f59e0b)20'
                 : '1px solid var(--error-border, #ef4444)20',
-              background: run.passes / run.ntests > 0.5
+              background: run.ntests > 0 && run.fails / run.ntests < 0.01
                 ? 'var(--warning-bg, #fffbeb)'
                 : 'var(--error-bg, #fef2f2)'
             }}>

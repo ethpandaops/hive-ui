@@ -467,11 +467,16 @@ const GroupDetail = () => {
   };
 
   const mostRecentRun = getMostRecentRun(testRuns);
+
+  // Compute filtered/grouped runs once for both header stats and card display
+  const filteredRuns = filterOldRuns(filterBySuites(filterByClients(testRuns)));
+  const groupedRuns = getGroupedRuns(filteredRuns, groupBy);
+  const displayedRuns = Object.values(groupedRuns).flat();
   const recentRuns = getRecentRuns(testRuns, 50);
 
-  // Check if directory is inactive (latest run > 7 days ago)
+  // Check if directory is inactive (latest run > 10 days ago)
   const isInactive = mostRecentRun ?
-    differenceInDays(new Date(), new Date(mostRecentRun.start)) > 7 :
+    differenceInDays(new Date(), new Date(mostRecentRun.start)) > 10 :
     false;
 
   // Get all available clients
@@ -597,7 +602,7 @@ const GroupDetail = () => {
               <GroupHeader
                 name={name!}
                 icon={dirIcons[name!]}
-                testRuns={testRuns}
+                testRuns={displayedRuns}
                 recentRuns={recentRuns}
                 mostRecentRun={mostRecentRun}
                 isInactive={isInactive}
@@ -1226,7 +1231,7 @@ const GroupDetail = () => {
 
               {!isSummaryCollapsed && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {Object.entries(getGroupedRuns(filterOldRuns(filterBySuites(filterByClients(testRuns))), groupBy)).map(([groupKey, groupRuns]) => (
+                {Object.entries(groupedRuns).map(([groupKey, groupRuns]) => (
                   <TestResultGroup
                     key={groupKey}
                     groupKey={groupKey}

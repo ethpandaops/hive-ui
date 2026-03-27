@@ -409,36 +409,54 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
                       >
                         {run.name} #{run.run_number}
                       </a>
-                      {run.jobs && (
-                        <div style={{
-                          display: 'flex',
-                          gap: '0.25rem',
-                          fontSize: '0.75rem'
+                      <div style={{
+                        display: 'flex',
+                        gap: '0.25rem',
+                        fontSize: '0.75rem'
+                      }}>
+                        {runningJobs.length > 0 && (
+                          <span style={{
+                            padding: '0.125rem 0.375rem',
+                            borderRadius: '0.25rem',
+                            backgroundColor: isDarkMode ? 'rgba(251, 146, 60, 0.2)' : 'rgba(251, 146, 60, 0.1)',
+                            color: '#fb923c',
+                            border: '1px solid rgba(251, 146, 60, 0.3)'
+                          }}>
+                            {runningJobs.length} running
+                          </span>
+                        )}
+                        {failedJobs.length > 0 && (
+                          <span style={{
+                            padding: '0.125rem 0.375rem',
+                            borderRadius: '0.25rem',
+                            backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239, 68, 68, 0.3)'
+                          }}>
+                            {failedJobs.length} failed
+                          </span>
+                        )}
+                        <span style={{
+                          padding: '0.125rem 0.375rem',
+                          borderRadius: '0.25rem',
+                          backgroundColor: isDarkMode ? 'rgba(148, 163, 184, 0.15)' : 'rgba(100, 116, 139, 0.1)',
+                          color: isDarkMode ? '#94a3b8' : '#64748b',
+                          border: `1px solid ${isDarkMode ? 'rgba(148, 163, 184, 0.25)' : 'rgba(100, 116, 139, 0.2)'}`
                         }}>
-                          {runningJobs.length > 0 && (
-                            <span style={{
-                              padding: '0.125rem 0.375rem',
-                              borderRadius: '0.25rem',
-                              backgroundColor: isDarkMode ? 'rgba(251, 146, 60, 0.2)' : 'rgba(251, 146, 60, 0.1)',
-                              color: '#fb923c',
-                              border: '1px solid rgba(251, 146, 60, 0.3)'
-                            }}>
-                              {runningJobs.length} running
-                            </span>
-                          )}
-                          {failedJobs.length > 0 && (
-                            <span style={{
-                              padding: '0.125rem 0.375rem',
-                              borderRadius: '0.25rem',
-                              backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
-                              color: '#ef4444',
-                              border: '1px solid rgba(239, 68, 68, 0.3)'
-                            }}>
-                              {failedJobs.length} failed
-                            </span>
-                          )}
-                        </div>
-                      )}
+                          {run.event === 'schedule' ? 'cron' : run.event === 'workflow_dispatch' ? 'manual' : run.event}
+                        </span>
+                        {run.inputs?.client_source && (
+                          <span style={{
+                            padding: '0.125rem 0.375rem',
+                            borderRadius: '0.25rem',
+                            backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                            color: isDarkMode ? '#93c5fd' : '#3b82f6',
+                            border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.2)'}`
+                          }}>
+                            {run.inputs.client_source}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div style={{
                       fontSize: '0.75rem',
