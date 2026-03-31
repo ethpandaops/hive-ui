@@ -105,6 +105,9 @@ export interface GitHubWorkflowRun {
   updated_at: string;
   run_number: number;
   run_attempt: number;
+  event: string;
+  triggering_actor?: { login: string };
+  inputs?: Record<string, string> | null;
   jobs?: GitHubJob[];
 }
 

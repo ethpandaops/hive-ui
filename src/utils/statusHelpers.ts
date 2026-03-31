@@ -8,7 +8,7 @@ export const getStatusStyles = (run: TestRun) => {
       text: 'var(--success-text, #047857)',
       border: 'var(--success-border, #10b981)',
       icon: '✓',
-      label: 'Success',
+      label: 'Passing',
       pattern: 'radial-gradient(circle at 100% 100%, transparent 15%, rgba(16, 185, 129, 0.05) 25%, transparent 30%), linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, var(--card-bg, #ffffff) 100%)'
     };
   } else if (run.timeout) {
@@ -20,14 +20,14 @@ export const getStatusStyles = (run: TestRun) => {
       label: 'Timeout',
       pattern: 'linear-gradient(45deg, rgba(245, 158, 11, 0.05) 25%, transparent 25%, transparent 50%, rgba(245, 158, 11, 0.05) 50%, rgba(245, 158, 11, 0.05) 75%, transparent 75%, transparent) 0 0 / 8px 8px, linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, var(--card-bg, #ffffff) 100%)'
     };
-  } else if (run.passes > 0 && run.passes / run.ntests > 0.5) {
-    // More than 50% passed but not all
+  } else if (run.ntests > 0 && run.fails / run.ntests < 0.01) {
+    // Less than 1% failed
     return {
       bg: 'var(--warning-bg, #fffbeb)',
       text: 'var(--warning-text, #b45309)',
       border: 'var(--warning-border, #f59e0b)',
       icon: '⚠',
-      label: 'Failed',
+      label: 'Failing',
       pattern: 'linear-gradient(45deg, rgba(245, 158, 11, 0.05) 25%, transparent 25%, transparent 50%, rgba(245, 158, 11, 0.05) 50%, rgba(245, 158, 11, 0.05) 75%, transparent 75%, transparent) 0 0 / 8px 8px, linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, var(--card-bg, #ffffff) 100%)'
     };
   } else {
@@ -36,7 +36,7 @@ export const getStatusStyles = (run: TestRun) => {
       text: 'var(--error-text, #b91c1c)',
       border: 'var(--error-border, #ef4444)',
       icon: '✕',
-      label: 'Error',
+      label: 'Failing',
       pattern: 'repeating-linear-gradient(-45deg, rgba(239, 68, 68, 0.05) 0, rgba(239, 68, 68, 0.05) 2px, transparent 2px, transparent 6px), linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, var(--card-bg, #ffffff) 100%)'
     };
   }

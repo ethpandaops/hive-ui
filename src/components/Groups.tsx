@@ -119,6 +119,18 @@ const Groups = () => {
       .slice(0, count);
   };
 
+  // Deduplicate runs to keep only the latest per (test name, client combination)
+  const getLatestRuns = (runs: TestRun[]): TestRun[] => {
+    const latest: Record<string, TestRun> = {};
+    runs.forEach(run => {
+      const key = `${run.name}::${run.clients.sort().join('+')}`;
+      if (!latest[key] || new Date(run.start) > new Date(latest[key].start)) {
+        latest[key] = run;
+      }
+    });
+    return Object.values(latest);
+  };
+
   return (
     <div className="space-y-8" style={{
       margin: '0.5rem',
@@ -136,9 +148,9 @@ const Groups = () => {
           const mostRecentRunB = getMostRecentRun(runsB);
 
           const isInactiveA = mostRecentRunA ?
-            differenceInDays(new Date(), new Date(mostRecentRunA.start)) > 7 : false;
+            differenceInDays(new Date(), new Date(mostRecentRunA.start)) > 10 : false;
           const isInactiveB = mostRecentRunB ?
-            differenceInDays(new Date(), new Date(mostRecentRunB.start)) > 7 : false;
+            differenceInDays(new Date(), new Date(mostRecentRunB.start)) > 10 : false;
 
           // Put inactive directories at the end
           if (isInactiveA && !isInactiveB) return 1;
@@ -150,10 +162,11 @@ const Groups = () => {
         .map(([directory, runs]) => {
           const mostRecentRun = getMostRecentRun(runs);
           const recentRuns = getRecentRuns(runs, 50);
+          const latestRuns = getLatestRuns(runs);
 
-          // Check if directory is inactive (latest run > 7 days ago)
+          // Check if directory is inactive (latest run > 10 days ago)
           const isInactive = mostRecentRun ?
-            differenceInDays(new Date(), new Date(mostRecentRun.start)) > 7 :
+            differenceInDays(new Date(), new Date(mostRecentRun.start)) > 10 :
             false;
 
           return (
@@ -196,7 +209,7 @@ const Groups = () => {
                   <GroupHeader
                     name={directory}
                     icon={dirIcons[directory]}
-                    testRuns={runs}
+                    testRuns={latestRuns}
                     recentRuns={recentRuns}
                     mostRecentRun={mostRecentRun}
                     isInactive={isInactive}
