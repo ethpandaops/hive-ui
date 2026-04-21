@@ -1,23 +1,37 @@
 [
   {
-    "name": "generic",
-    "address": "https://hive.ethpandaops.io/generic/",
+    "name": "bal-devnet-4",
+    "address": "https://hive.ethpandaops.io/bal-devnet-4/",
     "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/generic.yaml"
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-devnet-4.yaml"
     ]
   },
   {
-    "name": "bal",
+    "name": "bal-devnet-4-quick",
+    "address": "https://hive.ethpandaops.io/bal-devnet-4-quick/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-devnet-4-quick.yaml"
+    ]
+  },
+  {
+    "name": "bal-devnet-3",
     "address": "https://hive.ethpandaops.io/bal/",
     "github_workflows": [
       "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-devnet-3.yaml"
     ]
   },
   {
-    "name": "bal-quick",
+    "name": "bal-devnet-3-quick",
     "address": "https://hive.ethpandaops.io/bal-quick/",
     "github_workflows": [
       "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-devnet-3-quick.yaml"
+    ]
+  },
+  {
+    "name": "generic",
+    "address": "https://hive.ethpandaops.io/generic/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/generic.yaml"
     ]
   }
 ]
