@@ -21,6 +21,13 @@
     ]
   },
   {
+    "name": "snobal-devnet-5",
+    "address": "https://hive.ethpandaops.io/snobal-devnet-5/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-snobal-devnet-5.yaml"
+    ]
+  },
+  {
     "name": "snobal-devnet-5-quick",
     "address": "https://hive.ethpandaops.io/snobal-devnet-5-quick/",
     "github_workflows": [
