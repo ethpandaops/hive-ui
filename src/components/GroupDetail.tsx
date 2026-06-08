@@ -56,6 +56,8 @@ const GroupDetail = () => {
   });
 
   const [testNameFilter, setTestNameFilter] = useState('');
+  const [selectedSourceRefs, setSelectedSourceRefs] = useState<string[]>([]);
+  const sourceRefFilterRef = useRef<HTMLDetailsElement>(null);
   const [clientFilter, setClientFilter] = useState('');
   const [selectedClients, setSelectedClients] = useState<string[]>(() => {
     const urlClients = searchParams.get('clients');
@@ -365,6 +367,17 @@ const GroupDetail = () => {
     );
   };
 
+  // Filter test runs by selected source refs (e.g. branch/tag the client
+  // was built from — `glamsterdam-devnet-5`, `master`). Rows without a
+  // source_ref (legacy Hive EL rows) are kept when any filter is active
+  // since they can't be classified.
+  const filterBySourceRefs = (runs: TestRun[]): TestRun[] => {
+    if (selectedSourceRefs.length === 0) return runs;
+    return runs.filter(run =>
+      run.source_ref ? selectedSourceRefs.includes(run.source_ref) : true
+    );
+  };
+
   // Filter test runs by selected suites
   const filterBySuites = (runs: TestRun[]): TestRun[] => {
     if (selectedSuites.length === 0) return runs;
@@ -477,7 +490,7 @@ const GroupDetail = () => {
   const mostRecentRun = getMostRecentRun(testRuns);
 
   // Compute filtered/grouped runs once for both header stats and card display
-  const filteredRuns = filterOldRuns(filterBySuites(filterByClients(testRuns)));
+  const filteredRuns = filterOldRuns(filterBySuites(filterBySourceRefs(filterByClients(testRuns))));
   const groupedRuns = getGroupedRuns(filteredRuns, groupBy);
   const displayedRuns = Object.values(groupedRuns).flat();
   const recentRuns = getRecentRuns(testRuns, 50);
@@ -489,6 +502,18 @@ const GroupDetail = () => {
 
   // Get all available clients
   const availableClients = getAllClients(testRuns);
+
+  // Get all available source refs from clive-emitted runs
+  const availableSourceRefs = Array.from(
+    new Set(testRuns.map(r => r.source_ref).filter((v): v is string => !!v))
+  ).sort();
+
+  const toggleSourceRef = (ref: string) => {
+    setSelectedSourceRefs(prev =>
+      prev.includes(ref) ? prev.filter(r => r !== ref) : [...prev, ref]
+    );
+  };
+  const clearSourceRefFilters = () => setSelectedSourceRefs([]);
 
   // Get all available suites
   const availableSuites = getAllSuites(testRuns);
@@ -900,6 +925,113 @@ const GroupDetail = () => {
                           </div>
                       </details>
                     </div>
+
+                    {/* Source Ref Filter — only shown when at least one
+                        clive-emitted run carries a source_ref. Hive EL
+                        runs don't, so the filter stays hidden for those
+                        directories. */}
+                    {availableSourceRefs.length > 0 && (
+                      <div style={{ position: 'relative' }}>
+                        <details ref={sourceRefFilterRef} style={{ position: 'relative' }}>
+                          <summary style={{ listStyle: 'none', cursor: 'pointer', userSelect: 'none' }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              backgroundColor: isDarkMode ? '#334155' : 'var(--badge-bg, #f3f4f6)',
+                              borderRadius: '0.375rem',
+                              padding: '0.25rem 0.5rem',
+                              border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                              gap: '0.5rem',
+                              minWidth: '150px'
+                            }}>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                flex: 1,
+                              }}>
+                                <span style={{ fontWeight: '600' }}>Source ref:</span>{' '}
+                                {selectedSourceRefs.length === 0
+                                  ? 'All'
+                                  : selectedSourceRefs.length === 1
+                                  ? selectedSourceRefs[0]
+                                  : selectedSourceRefs.length}
+                              </span>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                color: isDarkMode ? '#f8fafc' : 'var(--text-primary, #111827)',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}>▼</span>
+                            </div>
+                          </summary>
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '0.25rem',
+                            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                            border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            borderRadius: '0.375rem',
+                            boxShadow: isDarkMode
+                              ? '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                              : '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                            padding: '0.5rem',
+                            zIndex: 10,
+                            minWidth: '250px',
+                            maxHeight: '400px',
+                            overflowY: 'auto'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '0.5rem',
+                              paddingBottom: '0.5rem',
+                              borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            }}>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                              }}>Filter by Source Ref</span>
+                              {selectedSourceRefs.length > 0 && (
+                                <button
+                                  onClick={clearSourceRefFilters}
+                                  style={{
+                                    fontSize: '0.625rem',
+                                    color: '#3b82f6',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '0.125rem 0.25rem',
+                                  }}
+                                >Clear</button>
+                              )}
+                            </div>
+                            {availableSourceRefs.map(ref => (
+                              <label key={ref} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.375rem 0.25rem',
+                                cursor: 'pointer',
+                                borderRadius: '0.25rem',
+                                fontSize: '0.75rem',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSourceRefs.includes(ref)}
+                                  onChange={() => toggleSourceRef(ref)}
+                                  style={{ cursor: 'pointer', width: '14px', height: '14px' }}
+                                />
+                                <span style={{ flex: 1 }}>{ref}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    )}
 
                     {/* Test Suite Filter */}
                     <div style={{ position: 'relative' }}>

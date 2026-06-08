@@ -56,6 +56,8 @@ export interface TestRun {
   fork?: string;
   skipped?: number;
   consensus_spec_tests_ref?: string;
+  source_ref?: string;
+  source_sha?: string;
   network?: string;
 }
 
