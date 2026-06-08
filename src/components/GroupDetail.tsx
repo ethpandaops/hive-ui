@@ -1297,14 +1297,22 @@ const GroupDetail = () => {
                       const entries = buckets[top];
                       const collapsed = !expandedTopBuckets.has(top);
                       const totalRows = entries.length;
+                      // Each test-name in a bucket may have several runs
+                      // rendered side-by-side (one per client — e.g.
+                      // `forkchoice/altair` shows both grandine and nimbus).
+                      // Sum across ALL runs, not just runs[0], otherwise the
+                      // header undercounts whichever client lands later in
+                      // the array (this used to hide Nimbus's skipped totals
+                      // when grandine was first).
                       const stats = entries.reduce(
                         (acc, [, runs]) => {
-                          const r = runs[0];
-                          if (!r) return acc;
-                          acc.ntests += r.ntests || 0;
-                          acc.passes += r.passes || 0;
-                          acc.skipped += (r as TestRun).skipped || 0;
-                          acc.fails += r.fails || 0;
+                          for (const r of runs) {
+                            if (!r) continue;
+                            acc.ntests += r.ntests || 0;
+                            acc.passes += r.passes || 0;
+                            acc.skipped += (r as TestRun).skipped || 0;
+                            acc.fails += r.fails || 0;
+                          }
                           return acc;
                         },
                         { ntests: 0, passes: 0, skipped: 0, fails: 0 }
