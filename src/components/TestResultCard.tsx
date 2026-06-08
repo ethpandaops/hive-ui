@@ -365,6 +365,21 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
               {run.passes}
             </div>
           )}
+          {(run.skipped ?? 0) > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0.2rem 0.4rem',
+              borderRadius: '0.25rem',
+              color: 'var(--warning-text, #b45309)',
+              fontWeight: '600',
+              border: '1px solid var(--warning-border, #f59e0b)20',
+              background: 'var(--warning-bg, #fffbeb)'
+            }}>
+              <span style={{ marginRight: '0.2rem' }}>⏭</span>
+              {run.skipped}
+            </div>
+          )}
           {run.fails > 0 && (
             <div style={{
               display: 'flex',
