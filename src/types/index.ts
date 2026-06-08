@@ -1,8 +1,40 @@
+// `category` distinguishes Hive EL runs (default) from CL spec-test runs
+// produced by ethpandaops/clive. Both share the same listing.jsonl + results/
+// schema; only the routing/rendering hints differ. Defaulting to `'el'` when
+// omitted keeps every existing Hive entry rendering unchanged.
+export type DirectoryCategory = 'el' | 'cl';
+
 export interface Directory {
   name: string;
   address: string;
   github_workflows?: string[];
+  // -- Additive fields used by ethpandaops/clive entries. All optional;
+  // a Hive EL directory leaves them undefined and renders as today.
+  category?: DirectoryCategory;
+  fork?: string;       // e.g. 'gloas' on a Glamsterdam devnet
+  spec_ref?: string;   // e.g. 'v1.7.0-alpha.10' (consensus-spec-tests release)
 }
+
+// `SpecTestCategory` mirrors the categories declared by clive adapters in
+// clive-meta.json. Kept as a string union so a misclassified or unknown
+// value just renders as plain text without breaking the consumer.
+export type SpecTestCategory =
+  | 'sanity'
+  | 'operations'
+  | 'epoch_processing'
+  | 'transition'
+  | 'random'
+  | 'finality'
+  | 'fork_choice'
+  | 'rewards'
+  | 'shuffling'
+  | 'ssz_generic'
+  | 'ssz_static'
+  | 'bls'
+  | 'kzg'
+  | 'light_client'
+  | 'merkle_proof'
+  | 'genesis';
 
 export interface TestRun {
   name: string;
@@ -16,6 +48,15 @@ export interface TestRun {
   fileName: string;
   size: number;
   simLog: string;
+  // -- Additive fields populated by clive. Hive EL rows leave these
+  // undefined and the CL summary view treats them as missing.
+  category?: SpecTestCategory | string;
+  subcategory?: string;
+  preset?: 'minimal' | 'mainnet' | 'general' | string;
+  fork?: string;
+  skipped?: number;
+  consensus_spec_tests_ref?: string;
+  network?: string;
 }
 
 export interface TestGroup {
