@@ -25,3 +25,7 @@ dist-ssr
 
 # Backup files
 *.bak
+
+# Local-only staging area for clive artifacts while reviewing the dashboard
+# against fixtures that haven't landed in S3 yet (do not commit).
+public/local-clive-data/
