@@ -75,6 +75,12 @@ export interface TestClientInfo {
 
 export interface TestSummaryResult {
   pass: boolean;
+  // Optional third state: a test that intentionally didn't execute (e.g.
+  // a fork-choice fixture a CL client doesn't yet support). Populated by
+  // clive; absent on legacy Hive runs (where every testcase is pass/fail).
+  // Consumers should treat `skipped: true` as a distinct state, not as
+  // pass-or-fail.
+  skipped?: boolean;
   log: {
     begin: number;
     end: number;

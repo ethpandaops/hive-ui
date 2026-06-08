@@ -400,6 +400,20 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     alignItems: 'center'
   };
 
+  // Yellow pill for `summaryResult.skipped` — clive (CL spec runs) forwards
+  // JUnit `<skipped />` here; legacy Hive runs never set it so the pass/fail
+  // pair below stays the only path for them.
+  const skipStyle: React.CSSProperties = {
+    backgroundColor: isDarkMode ? 'rgba(120, 53, 15, 0.5)' : 'rgba(254, 240, 138, 0.55)',
+    color: isDarkMode ? '#fbbf24' : '#b45309',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    display: 'inline-flex',
+    alignItems: 'center'
+  };
+
   // Card style
   const cardStyle: React.CSSProperties = {
     backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', // Dark blue or white
@@ -705,8 +719,17 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                       </div>
                     </td>
                     <td style={tableCellStyle}>
-                      <div style={testCase.summaryResult.pass ? passStyle : failStyle}>
-                        {testCase.summaryResult.pass ? (
+                      <div style={
+                        testCase.summaryResult.skipped
+                          ? skipStyle
+                          : (testCase.summaryResult.pass ? passStyle : failStyle)
+                      }>
+                        {testCase.summaryResult.skipped ? (
+                          <>
+                            <span style={{ marginRight: '0.25rem' }}>⏭</span>
+                            Skip
+                          </>
+                        ) : testCase.summaryResult.pass ? (
                           <>
                             <span style={{ marginRight: '0.25rem' }}>✓</span>
                             Pass

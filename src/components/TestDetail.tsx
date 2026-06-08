@@ -107,18 +107,22 @@ const TestDetail = () => {
     return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
   };
 
-  // Calculate test stats
+  // Calculate test stats with three categories: pass / skipped / fail.
+  // `summaryResult.skipped` is optional — legacy Hive runs never set it and
+  // their cases fall through to pass/fail as before.
   const testStats = testDetail ? Object.values(testDetail.testCases).reduce(
     (acc, testCase) => {
-      if (testCase.summaryResult.pass) {
+      if (testCase.summaryResult.skipped) {
+        acc.skipped += 1;
+      } else if (testCase.summaryResult.pass) {
         acc.passes += 1;
       } else {
         acc.fails += 1;
       }
       return acc;
     },
-    { passes: 0, fails: 0 }
-  ) : { passes: 0, fails: 0 };
+    { passes: 0, skipped: 0, fails: 0 }
+  ) : { passes: 0, skipped: 0, fails: 0 };
 
   // Calculate status colors based on test results, mimicking the TestResultCard logic
   const getStatusColors = () => {
@@ -210,6 +214,21 @@ const TestDetail = () => {
   const failStyle: React.CSSProperties = {
     backgroundColor: isDarkMode ? 'rgba(127, 29, 29, 0.5)' : 'rgba(254, 202, 202, 0.5)', // Dark or light red
     color: isDarkMode ? '#f87171' : '#dc2626', // Light or dark red text
+    padding: '0.25rem 0.5rem',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    display: 'inline-flex',
+    alignItems: 'center'
+  };
+
+  // Yellow pill for the third state: tests that intentionally didn't run
+  // (clive's CL spec runs forward `<skipped />` from JUnit; legacy Hive
+  // results never set summaryResult.skipped, so the existing two states stay
+  // unchanged).
+  const skipStyle: React.CSSProperties = {
+    backgroundColor: isDarkMode ? 'rgba(120, 53, 15, 0.5)' : 'rgba(254, 240, 138, 0.55)',
+    color: isDarkMode ? '#fbbf24' : '#b45309',
     padding: '0.25rem 0.5rem',
     borderRadius: '9999px',
     fontSize: '0.75rem',
@@ -1090,6 +1109,23 @@ const TestDetail = () => {
                         {testStats.passes}
                       </div>
 
+                      {/* Yellow skipped badge */}
+                      {testStats.skipped > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          backgroundColor: isDarkMode ? 'rgba(120, 53, 15, 0.2)' : 'rgba(254, 240, 138, 0.4)',
+                          color: isDarkMode ? '#fbbf24' : '#b45309',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '500'
+                        }}>
+                          <span style={{ marginRight: '0.25rem' }}>⏭</span>
+                          {testStats.skipped}
+                        </div>
+                      )}
+
                       {/* Only show the fails count if there are fails */}
                       {testStats.fails > 0 && (
                         <div style={{
@@ -1107,8 +1143,14 @@ const TestDetail = () => {
                         </div>
                       )}
 
-                      <div style={testStats.fails === 0 ? passStyle : failStyle}>
-                        {testStats.fails === 0 ? 'All Pass' : 'Some Failed'}
+                      <div style={
+                        testStats.fails > 0
+                          ? failStyle
+                          : (testStats.skipped > 0 ? skipStyle : passStyle)
+                      }>
+                        {testStats.fails === 0
+                          ? (testStats.skipped > 0 ? 'Some Skipped' : 'All Pass')
+                          : 'Some Failed'}
                       </div>
                     </div>
                   </div>
