@@ -1317,21 +1317,27 @@ const TestDetail = () => {
                     gap: '1.5rem',
                     marginTop: '1rem'
                   }}>
-                    {/* Command Section */}
-                    <div>
-                      <h4 style={{
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        color: isDarkMode ? '#e5e7eb' : '#374151',
-                        marginBottom: '0.75rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}>
-                        Hive Command
-                      </h4>
-                      <CommandDisplay command={testDetail.runMetadata.hiveCommand} />
-                    </div>
+                    {/* Command Section — only render when the run has a hive
+                        command. Clive (CL spec-test) runs don't ship one;
+                        rendering an empty CommandDisplay there used to crash
+                        with `command.map is not a function`. */}
+                    {Array.isArray(testDetail.runMetadata.hiveCommand) &&
+                      testDetail.runMetadata.hiveCommand.length > 0 && (
+                      <div>
+                        <h4 style={{
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: isDarkMode ? '#e5e7eb' : '#374151',
+                          marginBottom: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}>
+                          Hive Command
+                        </h4>
+                        <CommandDisplay command={testDetail.runMetadata.hiveCommand} />
+                      </div>
+                    )}
 
                     {/* Version Section */}
                     <div>
@@ -1346,7 +1352,9 @@ const TestDetail = () => {
                       }}>
                         Hive Version
                       </h4>
-                      <VersionInfo hiveVersion={testDetail.runMetadata.hiveVersion} />
+                      {testDetail.runMetadata.hiveVersion && (
+                        <VersionInfo hiveVersion={testDetail.runMetadata.hiveVersion} />
+                      )}
                     </div>
                   </div>
 

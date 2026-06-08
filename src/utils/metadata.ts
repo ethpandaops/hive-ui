@@ -1,6 +1,12 @@
 import { RunMetadata } from '../types';
 
-export function formatHiveCommand(command: string[]): string {
+export function formatHiveCommand(command: string[] | undefined | null): string {
+  // Some runMetadata objects (clive's CL spec-test runs) have no `hiveCommand`
+  // field; older Hive results have always carried one. Return an empty string
+  // when there's nothing to format rather than crashing on `.map`.
+  if (!Array.isArray(command) || command.length === 0) {
+    return '';
+  }
   return command
     .map(arg => {
       if (arg.includes(' ') || arg.includes('"') || arg.includes("'")) {
