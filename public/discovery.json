@@ -22,7 +22,7 @@
   },
   {
     "name": "spec-glamsterdam-devnet-5",
-    "address": "https://hive.ethpandaops.io/spec-glamsterdam-devnet-5/",
+    "address": "/local-clive-data/spec-glamsterdam-devnet-5",
     "category": "cl",
     "fork": "gloas",
     "spec_ref": "v1.7.0-alpha.10",

@@ -35,6 +35,14 @@ const GroupDetail = () => {
   const navigate = useNavigate();
 
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
+  // Top-level test-name buckets that are currently EXPANDED. Used when
+  // groupBy === 'test' and test names contain a `/` segment (clive entries
+  // emit `minimal/altair`, `forkchoice/deneb`, ..., which collapse cleanly
+  // into 4 top buckets: mainnet / minimal / forkchoice / other). Default
+  // empty set = every top bucket starts collapsed; the per-bucket summary
+  // header still shows pass/skip/fail counts so a glance at the page lists
+  // every bucket without paying the render cost of the nested cards.
+  const [expandedTopBuckets, setExpandedTopBuckets] = useState<Set<string>>(new Set());
 
   // Initialize from URL params or defaults
   const [groupBy, setGroupBy] = useState<GroupBy>(() => {
@@ -1229,20 +1237,151 @@ const GroupDetail = () => {
                 )}
               </div>
 
-              {!isSummaryCollapsed && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {Object.entries(groupedRuns).map(([groupKey, groupRuns]) => (
-                  <TestResultGroup
-                    key={groupKey}
-                    groupKey={groupKey}
-                    groupRuns={groupRuns}
-                    groupBy={groupBy}
-                    directory={name}
-                    directoryAddress={directoryAddresses[name]}
-                  />
-                ))}
-                </div>
-              )}
+              {!isSummaryCollapsed && (() => {
+                // When groupBy === 'test' and entries' names look like
+                // `<top>/<rest>` (clive convention), nest them under
+                // collapsible top-bucket sections. Otherwise (groupBy ===
+                // 'client', or names without a `/`) fall back to the
+                // existing flat list — Hive EL directories keep their
+                // historical rendering untouched.
+                const groupKeys = Object.keys(groupedRuns);
+                const supportsBuckets =
+                  groupBy === 'test' &&
+                  groupKeys.length > 1 &&
+                  groupKeys.some(k => k.includes('/'));
+
+                if (!supportsBuckets) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {Object.entries(groupedRuns).map(([groupKey, groupRuns]) => (
+                        <TestResultGroup
+                          key={groupKey}
+                          groupKey={groupKey}
+                          groupRuns={groupRuns}
+                          groupBy={groupBy}
+                          directory={name}
+                          directoryAddress={directoryAddresses[name]}
+                        />
+                      ))}
+                    </div>
+                  );
+                }
+
+                // Bucket entries by the prefix before the first `/`. Entries
+                // with no `/` fall under '_misc' rendered at the bottom.
+                const buckets: Record<string, [string, TestRun[]][]> = {};
+                for (const [groupKey, groupRuns] of Object.entries(groupedRuns)) {
+                  const top = groupKey.includes('/') ? groupKey.split('/')[0] : '_misc';
+                  (buckets[top] = buckets[top] || []).push([groupKey, groupRuns]);
+                }
+
+                // Prefer this ordering when present; unknown buckets are
+                // appended alphabetically after the known set.
+                const preferredOrder = ['mainnet', 'minimal', 'forkchoice', 'other', '_misc'];
+                const orderedTops = [
+                  ...preferredOrder.filter(t => t in buckets),
+                  ...Object.keys(buckets).filter(t => !preferredOrder.includes(t)).sort(),
+                ];
+
+                const toggle = (top: string) => {
+                  setExpandedTopBuckets(prev => {
+                    const next = new Set(prev);
+                    if (next.has(top)) next.delete(top); else next.add(top);
+                    return next;
+                  });
+                };
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {orderedTops.map(top => {
+                      const entries = buckets[top];
+                      const collapsed = !expandedTopBuckets.has(top);
+                      const totalRows = entries.length;
+                      const stats = entries.reduce(
+                        (acc, [, runs]) => {
+                          const r = runs[0];
+                          if (!r) return acc;
+                          acc.ntests += r.ntests || 0;
+                          acc.passes += r.passes || 0;
+                          acc.skipped += (r as TestRun).skipped || 0;
+                          acc.fails += r.fails || 0;
+                          return acc;
+                        },
+                        { ntests: 0, passes: 0, skipped: 0, fails: 0 }
+                      );
+                      return (
+                        <div key={top}>
+                          <button
+                            onClick={() => toggle(top)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '0.5rem 0.75rem',
+                              marginBottom: collapsed ? 0 : '0.75rem',
+                              background: 'transparent',
+                              border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                              borderRadius: '0.5rem',
+                              cursor: 'pointer',
+                              color: isDarkMode ? '#e5e7eb' : '#0f172a',
+                              fontWeight: 600,
+                              fontSize: '0.95rem',
+                              textAlign: 'left',
+                            }}
+                          >
+                            <span style={{ width: '1rem' }}>{collapsed ? '▸' : '▾'}</span>
+                            <span style={{ flex: '0 0 auto' }}>
+                              {top === '_misc' ? 'misc' : top}
+                            </span>
+                            <span style={{
+                              marginLeft: '0.5rem',
+                              fontSize: '0.75rem',
+                              color: isDarkMode ? '#94a3b8' : '#64748b',
+                              fontWeight: 400,
+                            }}>
+                              {totalRows} row{totalRows === 1 ? '' : 's'}
+                            </span>
+                            <span style={{ flex: 1 }} />
+                            <span style={{ fontSize: '0.75rem', color: isDarkMode ? '#4ade80' : '#16a34a' }}>
+                              ✓ {stats.passes}
+                            </span>
+                            {stats.skipped > 0 && (
+                              <span style={{ fontSize: '0.75rem', color: isDarkMode ? '#fbbf24' : '#b45309' }}>
+                                ⏭ {stats.skipped}
+                              </span>
+                            )}
+                            {stats.fails > 0 && (
+                              <span style={{ fontSize: '0.75rem', color: isDarkMode ? '#f87171' : '#dc2626' }}>
+                                ✕ {stats.fails}
+                              </span>
+                            )}
+                          </button>
+                          {!collapsed && (
+                            <div style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '1rem',
+                              paddingLeft: '1rem',
+                            }}>
+                              {entries.map(([groupKey, groupRuns]) => (
+                                <TestResultGroup
+                                  key={groupKey}
+                                  groupKey={groupKey}
+                                  groupRuns={groupRuns}
+                                  groupBy={groupBy}
+                                  directory={name}
+                                  directoryAddress={directoryAddresses[name]}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Table Section */}
