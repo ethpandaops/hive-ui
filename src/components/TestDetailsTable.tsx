@@ -48,21 +48,16 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
       searchTerm ? testCase.name.toLowerCase().includes(searchTerm.toLowerCase()) : true
     ) : [];
 
-  // Sort test cases - failed tests first
+  // Sort test cases by 3-way bucket: failed → skipped → passed.
+  // clive marks `<skipped />` cases as `pass: true` + `skipped: true`, so the
+  // old pass-vs-fail sort sank skips into the middle of the green block.
+  const bucketRank = (testCase: typeof filteredTestCases[number][1]): number => {
+    if (!testCase.summaryResult.pass) return 0;          // failed → top
+    if (testCase.summaryResult.skipped) return 1;        // skipped → middle
+    return 2;                                            // passed → bottom
+  };
   const sortedTestCases = [...filteredTestCases].sort((a, b) => {
-    const [, testCaseA] = a;
-    const [, testCaseB] = b;
-
-    // If A fails and B passes, A should come first
-    if (!testCaseA.summaryResult.pass && testCaseB.summaryResult.pass) {
-      return -1;
-    }
-    // If A passes and B fails, B should come first
-    if (testCaseA.summaryResult.pass && !testCaseB.summaryResult.pass) {
-      return 1;
-    }
-    // If both have the same status, maintain original order
-    return 0;
+    return bucketRank(a[1]) - bucketRank(b[1]);
   });
 
   // Calculate pagination
