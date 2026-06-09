@@ -27,7 +27,7 @@
     "fork": "gloas",
     "spec_ref": "v1.7.0-alpha.10",
     "github_workflows": [
-      "https://github.com/ethpandaops/glamsterdam-devnets/actions/workflows/clive-devnet-5.yaml"
+      "https://github.com/ethpandaops/glamsterdam-devnets/actions/workflows/hive-devnet-5.yaml"
     ]
   }
 ]
