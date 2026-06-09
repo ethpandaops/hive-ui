@@ -1,23 +1,23 @@
 // `category` distinguishes Hive EL runs (default) from CL spec-test runs
-// produced by ethpandaops/clive. Both share the same listing.jsonl + results/
-// schema; only the routing/rendering hints differ. Defaulting to `'el'` when
-// omitted keeps every existing Hive entry rendering unchanged.
+// produced by the hive `cl` simulator. Both share the same listing.jsonl +
+// results/ schema; only the routing/rendering hints differ. Defaulting to
+// `'el'` when omitted keeps every existing Hive entry rendering unchanged.
 export type DirectoryCategory = 'el' | 'cl';
 
 export interface Directory {
   name: string;
   address: string;
   github_workflows?: string[];
-  // -- Additive fields used by ethpandaops/clive entries. All optional;
+  // -- Additive fields used by CL spec-test entries. All optional;
   // a Hive EL directory leaves them undefined and renders as today.
   category?: DirectoryCategory;
   fork?: string;       // e.g. 'gloas' on a Glamsterdam devnet
   spec_ref?: string;   // e.g. 'v1.7.0-alpha.10' (consensus-spec-tests release)
 }
 
-// `SpecTestCategory` mirrors the categories declared by clive adapters in
-// clive-meta.json. Kept as a string union so a misclassified or unknown
-// value just renders as plain text without breaking the consumer.
+// `SpecTestCategory` mirrors the categories declared in each CL spec-runner's
+// cl-meta.json. Kept as a string union so a misclassified or unknown value
+// just renders as plain text without breaking the consumer.
 export type SpecTestCategory =
   | 'sanity'
   | 'operations'
@@ -48,8 +48,8 @@ export interface TestRun {
   fileName: string;
   size: number;
   simLog: string;
-  // -- Additive fields populated by clive. Hive EL rows leave these
-  // undefined and the CL summary view treats them as missing.
+  // -- Additive fields populated by CL spec-test runs. Hive EL rows
+  // leave these undefined and the CL summary view treats them as missing.
   category?: SpecTestCategory | string;
   subcategory?: string;
   preset?: 'minimal' | 'mainnet' | 'general' | string;
@@ -79,9 +79,9 @@ export interface TestSummaryResult {
   pass: boolean;
   // Optional third state: a test that intentionally didn't execute (e.g.
   // a fork-choice fixture a CL client doesn't yet support). Populated by
-  // clive; absent on legacy Hive runs (where every testcase is pass/fail).
-  // Consumers should treat `skipped: true` as a distinct state, not as
-  // pass-or-fail.
+  // CL spec-test runs; absent on legacy Hive runs (where every testcase is
+  // pass/fail). Consumers should treat `skipped: true` as a distinct state,
+  // not as pass-or-fail.
   skipped?: boolean;
   log: {
     begin: number;
