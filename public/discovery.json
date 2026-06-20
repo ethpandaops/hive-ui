@@ -7,20 +7,6 @@
     ]
   },
   {
-    "name": "bal",
-    "address": "https://hive.ethpandaops.io/bal/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-devnet-7.yaml"
-    ]
-  },
-  {
-    "name": "bal-quick",
-    "address": "https://hive.ethpandaops.io/bal-quick/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-devnet-7-quick.yaml"
-    ]
-  },
-  {
     "name": "glamsterdam",
     "address": "https://hive.ethpandaops.io/glamsterdam/",
     "github_workflows": [
