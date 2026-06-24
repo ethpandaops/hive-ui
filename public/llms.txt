@@ -1,0 +1,24 @@
+# Hive UI (hive.ethpandaops.io)
+
+> Web interface for [Hive](https://github.com/ethereum/hive), the Ethereum client integration-testing framework. The site is a static React app rendered over plain JSON/JSONL files. Every piece of data the UI shows is also directly fetchable as raw JSON — no API key, no auth, CORS-enabled. AI agents should read the data files below instead of scraping the HTML.
+
+For full schemas, field descriptions, and copy-paste recipes, read [/ai.md](https://hive.ethpandaops.io/ai.md).
+
+## Data access (3-step flow)
+
+1. **Discover test groups** — `GET https://hive.ethpandaops.io/discovery.json`
+   JSON array of `{ name, address, github_workflows? }`. `address` is the base URL for a group.
+2. **List runs in a group** — `GET {address}/listing.jsonl`
+   JSONL (one JSON object per line). Each line summarizes a run: `name, ntests, passes, fails, timeout, clients[], versions{}, start, fileName, size, simLog`. Filter for `fails > 0` to find failures.
+3. **Full run detail** — `GET {address}/results/{fileName}`
+   JSON with `testCases{}`; each case has `summaryResult.pass` and `summaryResult.log.{begin,end}` (byte offsets into the sim log).
+
+## Logs
+
+- Raw simulator/client logs — `GET {address}/results/{simLog}` (plain text; supports HTTP Range requests for partial reads using the `log.begin`/`log.end` byte offsets).
+
+## Examples
+
+- Groups index: https://hive.ethpandaops.io/discovery.json
+- Run listing: https://hive.ethpandaops.io/generic/listing.jsonl
+- Run detail: https://hive.ethpandaops.io/generic/results/{fileName-from-listing}
