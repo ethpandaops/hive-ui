@@ -4,9 +4,11 @@ This page documents how to read Ethereum Hive test results directly as machine-r
 data from `https://hive.ethpandaops.io`, without scraping the UI.
 
 The website is a static React single-page app. Everything it renders is fetched from
-plain **JSON** and **JSONL** files served at predictable URLs. All files are public,
-require no authentication, and are served with permissive CORS, so any HTTP client or
-AI agent can fetch them directly.
+plain **JSON** and **JSONL** files served at predictable URLs. All files are public and
+require no authentication, so any server-side HTTP client or AI agent (curl, Python,
+etc.) can fetch them directly. Note: the files are served same-origin and are **not**
+CORS-enabled, so a browser-based agent cannot fetch them cross-origin with `fetch()` —
+use a non-browser HTTP client.
 
 > Quick index for agents: [/llms.txt](https://hive.ethpandaops.io/llms.txt)
 
@@ -40,18 +42,24 @@ Returns a JSON array of test groups:
 | Field              | Type       | Description                                              |
 | ------------------ | ---------- | -------------------------------------------------------- |
 | `name`             | string     | Human-readable group name.                               |
-| `address`          | string     | Base URL for the group's data (may have a trailing `/`). |
+| `address`          | string     | Base URL for the group's data (ends with a trailing `/`). |
 | `github_workflows` | string[]?  | Optional GitHub Actions workflow URLs that produce it.   |
 
-Use `address` as the base for the next steps. Trailing slashes are optional —
-normalize as needed.
+Use `address` as the base for the next steps. **The `address` value ends with a
+trailing slash** (e.g. `https://hive.ethpandaops.io/generic/`). In the URL templates
+below, `{address}` means this value **with the trailing slash stripped** — building
+`{address}/listing.jsonl` without stripping it yields a double slash (`…/generic//listing.jsonl`)
+that returns 404. Normalize with e.g. `sed 's:/*$::'` (as in the recipe below).
 
 ## 2. List the runs in a group
 
 `GET {address}/listing.jsonl`
 
 This is **JSONL**: newline-delimited JSON, one test run per line. Parse it by splitting
-on `\n` and `JSON.parse`-ing each non-empty line.
+on `\n` and `JSON.parse`-ing each non-empty line. Parse each line independently and
+tolerate per-line failures: some lines embed client version strings containing raw
+control characters, which strict streaming parsers (e.g. `jq`) reject — skip the
+offending line rather than aborting the whole stream.
 
 Each line (a `TestRun`):
 
@@ -146,7 +154,7 @@ Each `TestCase`:
 | `start` / `end`       | string (ISO 8601)          | Case timing.                                             |
 | `summaryResult.pass`  | boolean                    | Pass/fail for this case.                                 |
 | `summaryResult.log`   | `{ begin, end }`           | **Byte offsets** into `simLog` for this case's output.   |
-| `clientInfo`          | object<string, ClientInfo> | Per-client runtime info (id, ip, name, logFile, etc.).   |
+| `clientInfo`          | object<string, ClientInfo>? | Per-client runtime info (id, ip, name, logFile, etc.). May be `null` for some cases. |
 
 ## 4. Read raw logs
 
