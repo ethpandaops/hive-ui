@@ -48,21 +48,16 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
       searchTerm ? testCase.name.toLowerCase().includes(searchTerm.toLowerCase()) : true
     ) : [];
 
-  // Sort test cases - failed tests first
+  // Sort test cases by 3-way bucket: failed → skipped → passed.
+  // clive marks `<skipped />` cases as `pass: true` + `skipped: true`, so the
+  // old pass-vs-fail sort sank skips into the middle of the green block.
+  const bucketRank = (testCase: typeof filteredTestCases[number][1]): number => {
+    if (!testCase.summaryResult.pass) return 0;          // failed → top
+    if (testCase.summaryResult.skipped) return 1;        // skipped → middle
+    return 2;                                            // passed → bottom
+  };
   const sortedTestCases = [...filteredTestCases].sort((a, b) => {
-    const [, testCaseA] = a;
-    const [, testCaseB] = b;
-
-    // If A fails and B passes, A should come first
-    if (!testCaseA.summaryResult.pass && testCaseB.summaryResult.pass) {
-      return -1;
-    }
-    // If A passes and B fails, B should come first
-    if (testCaseA.summaryResult.pass && !testCaseB.summaryResult.pass) {
-      return 1;
-    }
-    // If both have the same status, maintain original order
-    return 0;
+    return bucketRank(a[1]) - bucketRank(b[1]);
   });
 
   // Calculate pagination
@@ -400,6 +395,20 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     alignItems: 'center'
   };
 
+  // Yellow pill for `summaryResult.skipped` — clive (CL spec runs) forwards
+  // JUnit `<skipped />` here; legacy Hive runs never set it so the pass/fail
+  // pair below stays the only path for them.
+  const skipStyle: React.CSSProperties = {
+    backgroundColor: isDarkMode ? 'rgba(120, 53, 15, 0.5)' : 'rgba(254, 240, 138, 0.55)',
+    color: isDarkMode ? '#fbbf24' : '#b45309',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    display: 'inline-flex',
+    alignItems: 'center'
+  };
+
   // Card style
   const cardStyle: React.CSSProperties = {
     backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', // Dark blue or white
@@ -705,8 +714,17 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                       </div>
                     </td>
                     <td style={tableCellStyle}>
-                      <div style={testCase.summaryResult.pass ? passStyle : failStyle}>
-                        {testCase.summaryResult.pass ? (
+                      <div style={
+                        testCase.summaryResult.skipped
+                          ? skipStyle
+                          : (testCase.summaryResult.pass ? passStyle : failStyle)
+                      }>
+                        {testCase.summaryResult.skipped ? (
+                          <>
+                            <span style={{ marginRight: '0.25rem' }}>⏭</span>
+                            Skip
+                          </>
+                        ) : testCase.summaryResult.pass ? (
                           <>
                             <span style={{ marginRight: '0.25rem' }}>✓</span>
                             Pass

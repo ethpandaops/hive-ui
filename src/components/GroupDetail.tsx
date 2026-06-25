@@ -35,6 +35,14 @@ const GroupDetail = () => {
   const navigate = useNavigate();
 
   const [dirIcons, setDirIcons] = useState<Record<string, string>>({});
+  // Top-level test-name buckets that are currently EXPANDED. Used when
+  // groupBy === 'test' and test names contain a `/` segment (clive entries
+  // emit `minimal/altair`, `forkchoice/deneb`, ..., which collapse cleanly
+  // into 4 top buckets: mainnet / minimal / forkchoice / other). Default
+  // empty set = every top bucket starts collapsed; the per-bucket summary
+  // header still shows pass/skip/fail counts so a glance at the page lists
+  // every bucket without paying the render cost of the nested cards.
+  const [expandedTopBuckets, setExpandedTopBuckets] = useState<Set<string>>(new Set());
 
   // Initialize from URL params or defaults
   const [groupBy, setGroupBy] = useState<GroupBy>(() => {
@@ -48,6 +56,8 @@ const GroupDetail = () => {
   });
 
   const [testNameFilter, setTestNameFilter] = useState('');
+  const [selectedSourceRefs, setSelectedSourceRefs] = useState<string[]>([]);
+  const sourceRefFilterRef = useRef<HTMLDetailsElement>(null);
   const [clientFilter, setClientFilter] = useState('');
   const [selectedClients, setSelectedClients] = useState<string[]>(() => {
     const urlClients = searchParams.get('clients');
@@ -357,6 +367,17 @@ const GroupDetail = () => {
     );
   };
 
+  // Filter test runs by selected source refs (e.g. branch/tag the client
+  // was built from — `glamsterdam-devnet-5`, `master`). Rows without a
+  // source_ref (legacy Hive EL rows) are kept when any filter is active
+  // since they can't be classified.
+  const filterBySourceRefs = (runs: TestRun[]): TestRun[] => {
+    if (selectedSourceRefs.length === 0) return runs;
+    return runs.filter(run =>
+      run.source_ref ? selectedSourceRefs.includes(run.source_ref) : true
+    );
+  };
+
   // Filter test runs by selected suites
   const filterBySuites = (runs: TestRun[]): TestRun[] => {
     if (selectedSuites.length === 0) return runs;
@@ -469,7 +490,7 @@ const GroupDetail = () => {
   const mostRecentRun = getMostRecentRun(testRuns);
 
   // Compute filtered/grouped runs once for both header stats and card display
-  const filteredRuns = filterOldRuns(filterBySuites(filterByClients(testRuns)));
+  const filteredRuns = filterOldRuns(filterBySuites(filterBySourceRefs(filterByClients(testRuns))));
   const groupedRuns = getGroupedRuns(filteredRuns, groupBy);
   const displayedRuns = Object.values(groupedRuns).flat();
   const recentRuns = getRecentRuns(testRuns, 50);
@@ -481,6 +502,18 @@ const GroupDetail = () => {
 
   // Get all available clients
   const availableClients = getAllClients(testRuns);
+
+  // Get all available source refs from clive-emitted runs
+  const availableSourceRefs = Array.from(
+    new Set(testRuns.map(r => r.source_ref).filter((v): v is string => !!v))
+  ).sort();
+
+  const toggleSourceRef = (ref: string) => {
+    setSelectedSourceRefs(prev =>
+      prev.includes(ref) ? prev.filter(r => r !== ref) : [...prev, ref]
+    );
+  };
+  const clearSourceRefFilters = () => setSelectedSourceRefs([]);
 
   // Get all available suites
   const availableSuites = getAllSuites(testRuns);
@@ -893,6 +926,113 @@ const GroupDetail = () => {
                       </details>
                     </div>
 
+                    {/* Source Ref Filter — only shown when at least one
+                        clive-emitted run carries a source_ref. Hive EL
+                        runs don't, so the filter stays hidden for those
+                        directories. */}
+                    {availableSourceRefs.length > 0 && (
+                      <div style={{ position: 'relative' }}>
+                        <details ref={sourceRefFilterRef} style={{ position: 'relative' }}>
+                          <summary style={{ listStyle: 'none', cursor: 'pointer', userSelect: 'none' }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              backgroundColor: isDarkMode ? '#334155' : 'var(--badge-bg, #f3f4f6)',
+                              borderRadius: '0.375rem',
+                              padding: '0.25rem 0.5rem',
+                              border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                              gap: '0.5rem',
+                              minWidth: '150px'
+                            }}>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                flex: 1,
+                              }}>
+                                <span style={{ fontWeight: '600' }}>Source ref:</span>{' '}
+                                {selectedSourceRefs.length === 0
+                                  ? 'All'
+                                  : selectedSourceRefs.length === 1
+                                  ? selectedSourceRefs[0]
+                                  : selectedSourceRefs.length}
+                              </span>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                color: isDarkMode ? '#f8fafc' : 'var(--text-primary, #111827)',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}>▼</span>
+                            </div>
+                          </summary>
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '0.25rem',
+                            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                            border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            borderRadius: '0.375rem',
+                            boxShadow: isDarkMode
+                              ? '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                              : '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                            padding: '0.5rem',
+                            zIndex: 10,
+                            minWidth: '250px',
+                            maxHeight: '400px',
+                            overflowY: 'auto'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '0.5rem',
+                              paddingBottom: '0.5rem',
+                              borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(229, 231, 235, 0.8)'}`,
+                            }}>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                              }}>Filter by Source Ref</span>
+                              {selectedSourceRefs.length > 0 && (
+                                <button
+                                  onClick={clearSourceRefFilters}
+                                  style={{
+                                    fontSize: '0.625rem',
+                                    color: '#3b82f6',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '0.125rem 0.25rem',
+                                  }}
+                                >Clear</button>
+                              )}
+                            </div>
+                            {availableSourceRefs.map(ref => (
+                              <label key={ref} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.375rem 0.25rem',
+                                cursor: 'pointer',
+                                borderRadius: '0.25rem',
+                                fontSize: '0.75rem',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSourceRefs.includes(ref)}
+                                  onChange={() => toggleSourceRef(ref)}
+                                  style={{ cursor: 'pointer', width: '14px', height: '14px' }}
+                                />
+                                <span style={{ flex: 1 }}>{ref}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    )}
+
                     {/* Test Suite Filter */}
                     <div style={{ position: 'relative' }}>
                       <details
@@ -1229,20 +1369,159 @@ const GroupDetail = () => {
                 )}
               </div>
 
-              {!isSummaryCollapsed && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {Object.entries(groupedRuns).map(([groupKey, groupRuns]) => (
-                  <TestResultGroup
-                    key={groupKey}
-                    groupKey={groupKey}
-                    groupRuns={groupRuns}
-                    groupBy={groupBy}
-                    directory={name}
-                    directoryAddress={directoryAddresses[name]}
-                  />
-                ))}
-                </div>
-              )}
+              {!isSummaryCollapsed && (() => {
+                // When groupBy === 'test' and entries' names look like
+                // `<top>/<rest>` (clive convention), nest them under
+                // collapsible top-bucket sections. Otherwise (groupBy ===
+                // 'client', or names without a `/`) fall back to the
+                // existing flat list — Hive EL directories keep their
+                // historical rendering untouched.
+                const groupKeys = Object.keys(groupedRuns);
+                const supportsBuckets =
+                  groupBy === 'test' &&
+                  groupKeys.length > 1 &&
+                  groupKeys.some(k => k.includes('/'));
+
+                if (!supportsBuckets) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {Object.entries(groupedRuns).map(([groupKey, groupRuns]) => (
+                        <TestResultGroup
+                          key={groupKey}
+                          groupKey={groupKey}
+                          groupRuns={groupRuns}
+                          groupBy={groupBy}
+                          directory={name}
+                          directoryAddress={directoryAddresses[name]}
+                        />
+                      ))}
+                    </div>
+                  );
+                }
+
+                // Bucket entries by the prefix before the first `/`. Entries
+                // with no `/` fall under '_misc' rendered at the bottom.
+                const buckets: Record<string, [string, TestRun[]][]> = {};
+                for (const [groupKey, groupRuns] of Object.entries(groupedRuns)) {
+                  const top = groupKey.includes('/') ? groupKey.split('/')[0] : '_misc';
+                  (buckets[top] = buckets[top] || []).push([groupKey, groupRuns]);
+                }
+
+                // Prefer this ordering when present; unknown buckets are
+                // appended alphabetically after the known set.
+                const preferredOrder = ['mainnet', 'minimal', 'forkchoice', 'other', '_misc'];
+                const orderedTops = [
+                  ...preferredOrder.filter(t => t in buckets),
+                  ...Object.keys(buckets).filter(t => !preferredOrder.includes(t)).sort(),
+                ];
+
+                const toggle = (top: string) => {
+                  setExpandedTopBuckets(prev => {
+                    const next = new Set(prev);
+                    if (next.has(top)) next.delete(top); else next.add(top);
+                    return next;
+                  });
+                };
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {orderedTops.map(top => {
+                      const entries = buckets[top];
+                      const collapsed = !expandedTopBuckets.has(top);
+                      const totalRows = entries.length;
+                      // Each test-name in a bucket may have several runs
+                      // rendered side-by-side (one per client — e.g.
+                      // `forkchoice/altair` shows both grandine and nimbus).
+                      // Sum across ALL runs, not just runs[0], otherwise the
+                      // header undercounts whichever client lands later in
+                      // the array (this used to hide Nimbus's skipped totals
+                      // when grandine was first).
+                      const stats = entries.reduce(
+                        (acc, [, runs]) => {
+                          for (const r of runs) {
+                            if (!r) continue;
+                            acc.ntests += r.ntests || 0;
+                            acc.passes += r.passes || 0;
+                            acc.skipped += (r as TestRun).skipped || 0;
+                            acc.fails += r.fails || 0;
+                          }
+                          return acc;
+                        },
+                        { ntests: 0, passes: 0, skipped: 0, fails: 0 }
+                      );
+                      return (
+                        <div key={top}>
+                          <button
+                            onClick={() => toggle(top)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              padding: '0.5rem 0.75rem',
+                              marginBottom: collapsed ? 0 : '0.75rem',
+                              background: 'transparent',
+                              border: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`,
+                              borderRadius: '0.5rem',
+                              cursor: 'pointer',
+                              color: isDarkMode ? '#e5e7eb' : '#0f172a',
+                              fontWeight: 600,
+                              fontSize: '0.95rem',
+                              textAlign: 'left',
+                            }}
+                          >
+                            <span style={{ width: '1rem' }}>{collapsed ? '▸' : '▾'}</span>
+                            <span style={{ flex: '0 0 auto' }}>
+                              {top === '_misc' ? 'misc' : top}
+                            </span>
+                            <span style={{
+                              marginLeft: '0.5rem',
+                              fontSize: '0.75rem',
+                              color: isDarkMode ? '#94a3b8' : '#64748b',
+                              fontWeight: 400,
+                            }}>
+                              {totalRows} row{totalRows === 1 ? '' : 's'}
+                            </span>
+                            <span style={{ flex: 1 }} />
+                            <span style={{ fontSize: '0.75rem', color: isDarkMode ? '#4ade80' : '#16a34a' }}>
+                              ✓ {stats.passes}
+                            </span>
+                            {stats.skipped > 0 && (
+                              <span style={{ fontSize: '0.75rem', color: isDarkMode ? '#fbbf24' : '#b45309' }}>
+                                ⏭ {stats.skipped}
+                              </span>
+                            )}
+                            {stats.fails > 0 && (
+                              <span style={{ fontSize: '0.75rem', color: isDarkMode ? '#f87171' : '#dc2626' }}>
+                                ✕ {stats.fails}
+                              </span>
+                            )}
+                          </button>
+                          {!collapsed && (
+                            <div style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '1rem',
+                              paddingLeft: '1rem',
+                            }}>
+                              {entries.map(([groupKey, groupRuns]) => (
+                                <TestResultGroup
+                                  key={groupKey}
+                                  groupKey={groupKey}
+                                  groupRuns={groupRuns}
+                                  groupBy={groupBy}
+                                  directory={name}
+                                  directoryAddress={directoryAddresses[name]}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Table Section */}

@@ -3,6 +3,19 @@ import { TestRun } from '../types';
 // Helper function to get status colors based on test run results
 export const getStatusStyles = (run: TestRun) => {
   if (run.fails === 0) {
+    // When the run reports skipped tests (clive forwards JUnit `<skipped />`),
+    // surface a yellow "Skipped" pill instead of the all-green "Passing" one.
+    // A pure pass run (skipped is 0 or undefined) keeps the existing green.
+    if ((run.skipped ?? 0) > 0) {
+      return {
+        bg: 'var(--warning-bg, #fffbeb)',
+        text: 'var(--warning-text, #b45309)',
+        border: 'var(--warning-border, #f59e0b)',
+        icon: '⏭',
+        label: 'Skipped',
+        pattern: 'linear-gradient(45deg, rgba(245, 158, 11, 0.05) 25%, transparent 25%, transparent 50%, rgba(245, 158, 11, 0.05) 50%, rgba(245, 158, 11, 0.05) 75%, transparent 75%, transparent) 0 0 / 8px 8px, linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, var(--card-bg, #ffffff) 100%)'
+      };
+    }
     return {
       bg: 'var(--success-bg, #ecfdf5)',
       text: 'var(--success-text, #047857)',
