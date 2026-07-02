@@ -22,7 +22,40 @@ import {
   type LogFileConfig,
 } from '../utils/logFileUtils';
 import { highlightLinesAsync } from '../utils/chunkHighlighter';
-import { byteRangeToLineRange, decodeBytes, type LineRange } from '../utils/byteRange';
+import {
+  byteRangeToLineRange,
+  countLines,
+  countLinesBefore,
+  decodeBytes,
+  fetchByteRange,
+  fetchFileSize,
+  formatByteSize,
+  type LineRange,
+} from '../utils/byteRange';
+
+// Windowed mode: how much context is loaded around the test's byte range,
+// and how much each "load more" click adds.
+const WINDOW_CONTEXT_BYTES = 64 * 1024;
+const WINDOW_CHUNK_BYTES = 64 * 1024;
+const LINE_HEIGHT_PX = 21; // Must match VirtualizedLogContent.
+
+interface WindowMeta {
+  // Effective loaded byte range [startByte, endByte), trimmed to line
+  // boundaries.
+  startByte: number;
+  endByte: number;
+  totalSize: number | null;
+  atEof: boolean;
+}
+
+// Drops the partial first line of a window that starts mid-line, returning
+// the trimmed bytes and the file offset they start at.
+function trimLeadingPartialLine(bytes: Uint8Array, startByte: number): { bytes: Uint8Array; startByte: number } {
+  if (startByte === 0) return { bytes, startByte };
+  const nl = bytes.indexOf(10);
+  if (nl < 0) return { bytes, startByte };
+  return { bytes: bytes.subarray(nl + 1), startByte: startByte + nl + 1 };
+}
 
 const LogViewer = () => {
   const params = useParams<{ group: string; suiteId: string; logFile: string }>();
@@ -44,12 +77,26 @@ const LogViewer = () => {
   const [highlightProgress, setHighlightProgress] = useState<number>(0);
   const [isHighlighting, setIsHighlighting] = useState<boolean>(false);
 
-  // Line range covered by the anchored byte range, once computed.
+  // Line range covered by the anchored byte range (window-relative in
+  // windowed mode), once computed.
   const [rangeLines, setRangeLines] = useState<LineRange | null>(null);
+
+  // Windowed mode state: only the bytes around the anchored range are
+  // loaded, so arbitrarily large shared client logs render instantly.
+  const [windowMeta, setWindowMeta] = useState<WindowMeta | null>(null);
+  // Absolute (whole-file) line number of the first loaded line; resolved in
+  // the background by streaming and counting the newlines before the window.
+  const [absFirstLine, setAbsFirstLine] = useState<number | null>(null);
+  const [fullRequested, setFullRequested] = useState<boolean>(false);
+  const [expanding, setExpanding] = useState<'up' | 'down' | null>(null);
+  // Scroll compensation after prepending lines, keyed to force effect runs.
+  const [scrollAdjust, setScrollAdjust] = useState<{ px: number; key: number }>({ px: 0, key: 0 });
 
   // Create refs to access DOM elements directly
   const logContentRef = useRef<HTMLPreElement>(null);
   const cancelHighlightRef = useRef<(() => void) | null>(null);
+  const windowStartRef = useRef<number | null>(null);
+  const lineCountAbortRef = useRef<AbortController | null>(null);
 
   const group = params.group || '';
   const suiteId = params.suiteId || '';
@@ -60,9 +107,11 @@ const LogViewer = () => {
 
   // Byte range [begin, end) to anchor on: the log section belonging to one
   // test when the client log is shared across tests (hive TestLogOffsets).
-  // The full file is loaded and the range highlighted and scrolled to.
+  // Only a window around the range is loaded; context can be expanded, or
+  // the whole file loaded on request.
   const beginByte = searchParams.get('begin') ? parseInt(searchParams.get('begin') || '0') : null;
   const endByte = searchParams.get('end') ? parseInt(searchParams.get('end') || '0') : null;
+  const windowedMode = beginByte !== null && endByte !== null && !fullRequested;
 
   // Fetch directories to get the discovery address
   const { data: directories } = useQuery({
@@ -150,6 +199,89 @@ const LogViewer = () => {
   }, [logConfig, logLines]);
 
   useEffect(() => {
+    // Applies full-file content to state; used by full mode and as the
+    // windowed-mode fallback when the server does not support Range.
+    const applyFullContent = (bytes: Uint8Array | null, text: string) => {
+      if (bytes && beginByte !== null && endByte !== null) {
+        // Byte offsets refer to raw bytes, so the byte-to-line mapping
+        // must be computed on bytes, not on the decoded string.
+        setRangeLines(byteRangeToLineRange(bytes, { begin: beginByte, end: endByte }));
+      }
+      setLogContent(text);
+      setWindowMeta(null);
+      setAbsFirstLine(1);
+
+      const lines = splitIntoLines(text);
+      setLineCount(lines.length);
+      const sizeBytes = bytes ? bytes.length : getFileSizeBytes(text);
+      setFileSize(formatBytes(sizeBytes));
+
+      // Anchored views always use the virtualized renderer, which supports
+      // range highlighting.
+      const config = classifyLogFile(lines.length, sizeBytes);
+      if (beginByte !== null && endByte !== null) {
+        config.enableVirtualization = true;
+        config.mode = 'large';
+      }
+      setLogConfig(config);
+      if (!config.enableVirtualization) {
+        setLineNumbers(Array.from({ length: lines.length }, (_, i) => (i + 1).toString()));
+      }
+    };
+
+    const fetchFull = async (logFilePath: string) => {
+      const response = await fetch(logFilePath);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch log file: ${response.statusText}`);
+      }
+      if (beginByte !== null && endByte !== null) {
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        applyFullContent(bytes, decodeBytes(bytes));
+      } else {
+        applyFullContent(null, await response.text());
+      }
+    };
+
+    const fetchWindow = async (logFilePath: string) => {
+      const begin = beginByte as number;
+      const end = endByte as number;
+
+      const knownSize = await fetchFileSize(logFilePath);
+      const desiredStart = Math.max(0, begin - WINDOW_CONTEXT_BYTES);
+      const desiredEnd = knownSize !== null ? Math.min(knownSize, end + WINDOW_CONTEXT_BYTES) : end + WINDOW_CONTEXT_BYTES;
+
+      const result = await fetchByteRange(logFilePath, { begin: desiredStart, end: desiredEnd });
+      if (result.fullBody) {
+        // Server ignored the Range header; we already have the whole file.
+        applyFullContent(result.fullBody, decodeBytes(result.fullBody));
+        return;
+      }
+
+      const totalSize = result.totalSize ?? knownSize;
+      const receivedEnd = desiredStart + result.bytes.length;
+      const atEof = totalSize !== null ? receivedEnd >= totalSize : result.bytes.length < desiredEnd - desiredStart;
+
+      const trimmed = trimLeadingPartialLine(result.bytes, desiredStart);
+      const startByte = trimmed.startByte;
+      let bytes = trimmed.bytes;
+      if (!atEof) {
+        // Also trim the partial last line, but never trim into the
+        // anchored range itself.
+        const lastNl = bytes.lastIndexOf(10);
+        if (lastNl >= 0 && startByte + lastNl + 1 >= end) {
+          bytes = bytes.subarray(0, lastNl + 1);
+        }
+      }
+
+      setRangeLines(byteRangeToLineRange(bytes, { begin: begin - startByte, end: end - startByte }));
+      setLogContent(decodeBytes(bytes));
+      setWindowMeta({ startByte, endByte: startByte + bytes.length, totalSize, atEof });
+      setAbsFirstLine(startByte === 0 ? 1 : null);
+      setLineCount(countLines(bytes));
+      setFileSize(totalSize !== null ? formatBytes(totalSize) : formatBytes(bytes.length));
+      setLogConfig({ mode: 'large', enableHighlighting: true, enableVirtualization: true });
+    };
+
     const fetchLogFile = async () => {
       if (!discoveryAddress || !suiteId || !logFile) {
         setLoading(false);
@@ -162,50 +294,18 @@ const LogViewer = () => {
         setHighlightedLines(new Map());
         setHighlightProgress(0);
         setRangeLines(null);
+        setWindowMeta(null);
+        setAbsFirstLine(null);
+        setExpanding(null);
 
         // Construct the URL to fetch the log file
         const logFilePath = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
 
-        const response = await fetch(logFilePath);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch log file: ${response.statusText}`);
-        }
-
-        let text: string;
-        if (beginByte !== null && endByte !== null) {
-          // Byte offsets refer to raw bytes, so the byte-to-line mapping
-          // must be computed on bytes, not on the decoded string.
-          const bytes = new Uint8Array(await response.arrayBuffer());
-          setRangeLines(byteRangeToLineRange(bytes, { begin: beginByte, end: endByte }));
-          text = decodeBytes(bytes);
+        if (windowedMode) {
+          await fetchWindow(logFilePath);
         } else {
-          text = await response.text();
+          await fetchFull(logFilePath);
         }
-        setLogContent(text);
-
-        // Calculate line count and file size
-        const lines = splitIntoLines(text);
-        const finalLineCount = lines.length;
-        setLineCount(finalLineCount);
-
-        const sizeBytes = getFileSizeBytes(text);
-        setFileSize(formatBytes(sizeBytes));
-
-        // Classify file and determine rendering mode. Anchored views always
-        // use the virtualized renderer, which supports range highlighting.
-        const config = classifyLogFile(finalLineCount, sizeBytes);
-        if (beginByte !== null && endByte !== null) {
-          config.enableVirtualization = true;
-          config.mode = 'large';
-        }
-        setLogConfig(config);
-
-        // Generate line numbers array (for small files)
-        if (!config.enableVirtualization) {
-          const numbers = Array.from({ length: finalLineCount }, (_, i) => (i + 1).toString());
-          setLineNumbers(numbers);
-        }
-
         setLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -214,7 +314,94 @@ const LogViewer = () => {
     };
 
     fetchLogFile();
-  }, [discoveryAddress, suiteId, logFile, beginByte, endByte]);
+  }, [discoveryAddress, suiteId, logFile, beginByte, endByte, windowedMode]);
+
+  // Resolve absolute line numbers for the window in the background by
+  // counting the newlines before it. Streamed and abortable, so even very
+  // large files only cost bandwidth, never rendering time.
+  useEffect(() => {
+    windowStartRef.current = windowMeta?.startByte ?? null;
+    if (!windowMeta || windowMeta.startByte === 0 || absFirstLine !== null || !discoveryAddress) {
+      return;
+    }
+    const startByte = windowMeta.startByte;
+    const controller = new AbortController();
+    lineCountAbortRef.current?.abort();
+    lineCountAbortRef.current = controller;
+    const logFilePath = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
+    countLinesBefore(logFilePath, startByte, controller.signal)
+      .then((line) => {
+        // Ignore the result if the window start moved while counting.
+        if (windowStartRef.current === startByte) {
+          setAbsFirstLine(line);
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowMeta?.startByte, discoveryAddress, logFile]);
+
+  // Expand the loaded window upwards (earlier in the log).
+  const expandUp = useCallback(async () => {
+    if (!windowMeta || windowMeta.startByte <= 0 || expanding || !discoveryAddress) return;
+    setExpanding('up');
+    try {
+      const logFilePath = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
+      const newStart = Math.max(0, windowMeta.startByte - WINDOW_CHUNK_BYTES);
+      const result = await fetchByteRange(logFilePath, { begin: newStart, end: windowMeta.startByte });
+      const { bytes, startByte } = trimLeadingPartialLine(result.bytes, newStart);
+      const addedLines = countLines(bytes);
+      if (addedLines === 0) return;
+      setLogContent((prev) => decodeBytes(bytes) + prev);
+      setWindowMeta({ ...windowMeta, startByte });
+      setLineCount((prev) => prev + addedLines);
+      setAbsFirstLine((prev) => (prev !== null ? Math.max(1, prev - addedLines) : startByte === 0 ? 1 : null));
+      setRangeLines((prev) => (prev ? { start: prev.start + addedLines, end: prev.end + addedLines } : prev));
+      setScrollAdjust((s) => ({ px: addedLines * LINE_HEIGHT_PX, key: s.key + 1 }));
+    } catch (err) {
+      console.error('Failed to expand log window upwards', err);
+    } finally {
+      setExpanding(null);
+    }
+  }, [windowMeta, expanding, discoveryAddress, logFile]);
+
+  // Expand the loaded window downwards (later in the log).
+  const expandDown = useCallback(async () => {
+    if (!windowMeta || windowMeta.atEof || expanding || !discoveryAddress) return;
+    setExpanding('down');
+    try {
+      const logFilePath = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
+      const desiredEnd = windowMeta.totalSize !== null
+        ? Math.min(windowMeta.totalSize, windowMeta.endByte + WINDOW_CHUNK_BYTES)
+        : windowMeta.endByte + WINDOW_CHUNK_BYTES;
+      const result = await fetchByteRange(logFilePath, { begin: windowMeta.endByte, end: desiredEnd });
+      const totalSize = result.totalSize ?? windowMeta.totalSize;
+      const receivedEnd = windowMeta.endByte + result.bytes.length;
+      const atEof = totalSize !== null ? receivedEnd >= totalSize : result.bytes.length < desiredEnd - windowMeta.endByte;
+      let bytes = result.bytes;
+      if (!atEof) {
+        const lastNl = bytes.lastIndexOf(10);
+        if (lastNl >= 0) {
+          bytes = bytes.subarray(0, lastNl + 1);
+        }
+      }
+      if (bytes.length === 0 && !atEof) return;
+      setLogContent((prev) => prev + decodeBytes(bytes));
+      setWindowMeta({ ...windowMeta, endByte: windowMeta.endByte + bytes.length, totalSize, atEof });
+      setLineCount((prev) => prev + countLines(bytes));
+    } catch (err) {
+      console.error('Failed to expand log window downwards', err);
+    } finally {
+      setExpanding(null);
+    }
+  }, [windowMeta, expanding, discoveryAddress, logFile]);
+
+  // Line numbers displayed in the gutter: absolute once known, otherwise
+  // relative to the loaded window.
+  const displayBase = absFirstLine ?? 1;
+  const displayedRange = rangeLines
+    ? { start: rangeLines.start + displayBase - 1, end: rangeLines.end + displayBase - 1 }
+    : null;
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
@@ -340,6 +527,30 @@ const LogViewer = () => {
       text-decoration: none;
     }
 
+    .expand-window-button {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      background-color: ${isDarkMode ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.08)'};
+      color: ${isDarkMode ? '#93c5fd' : '#2563eb'};
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+
+    .expand-window-button:hover:not(:disabled) {
+      background-color: ${isDarkMode ? 'rgba(59, 130, 246, 0.22)' : 'rgba(59, 130, 246, 0.15)'};
+    }
+
+    .expand-window-button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
     .log-stats {
       font-size: 14px;
       color: var(--text-secondary);
@@ -449,9 +660,18 @@ const LogViewer = () => {
                     {decodeURIComponent(logFile).split('/').pop()}
                   </h2>
                   <div className="log-stats">
-                    {lineCount.toLocaleString()} lines · {fileSize}
+                    {windowMeta ? (
+                      <>
+                        {lineCount.toLocaleString()} lines loaded ({formatByteSize(windowMeta.endByte - windowMeta.startByte)}
+                        {windowMeta.totalSize !== null && ` of ${fileSize}`})
+                      </>
+                    ) : (
+                      <>
+                        {lineCount.toLocaleString()} lines · {fileSize}
+                      </>
+                    )}
                     {selectedLine && ` · Line ${selectedLine} selected`}
-                    {rangeLines && (
+                    {displayedRange && (
                       <span>
                         {' · '}
                         <span
@@ -461,7 +681,8 @@ const LogViewer = () => {
                             padding: '1px 6px',
                           }}
                         >
-                          Test section: lines {rangeLines.start.toLocaleString()}–{rangeLines.end.toLocaleString()}
+                          Test section: lines {displayedRange.start.toLocaleString()}–{displayedRange.end.toLocaleString()}
+                          {windowMeta && absFirstLine === null && ' (within loaded window)'}
                         </span>
                       </span>
                     )}
@@ -473,6 +694,16 @@ const LogViewer = () => {
                       <div className="highlight-progress-spinner" />
                       <span>Applying syntax highlighting... {highlightProgress}%</span>
                     </div>
+                  )}
+                  {windowMeta && (
+                    <button
+                      onClick={() => setFullRequested(true)}
+                      className="raw-log-link"
+                      style={{ border: 'none', cursor: 'pointer' }}
+                      title="Load and render the entire log file"
+                    >
+                      Load full file{windowMeta.totalSize !== null && ` (${formatByteSize(windowMeta.totalSize)})`}
+                    </button>
                   )}
                   <a
                     href={getLogUrl()}
@@ -486,16 +717,44 @@ const LogViewer = () => {
               </div>
 
               {logConfig?.enableVirtualization ? (
-                <VirtualizedLogContent
-                  lines={logLines}
-                  highlightedLines={highlightedLines}
-                  selectedLine={selectedLine}
-                  onLineClick={handleLineClick}
-                  isDarkMode={isDarkMode}
-                  scrollToLine={selectedLine ?? rangeLines?.start}
-                  codeClassName={codeClassName}
-                  highlightRange={rangeLines}
-                />
+                <>
+                  {windowMeta && windowMeta.startByte > 0 && (
+                    <button
+                      onClick={expandUp}
+                      disabled={expanding !== null}
+                      className="expand-window-button"
+                      title="Load earlier log context"
+                    >
+                      {expanding === 'up'
+                        ? 'Loading…'
+                        : `⬆ Load ${formatByteSize(Math.min(WINDOW_CHUNK_BYTES, windowMeta.startByte))} earlier (${formatByteSize(windowMeta.startByte)} above)`}
+                    </button>
+                  )}
+                  <VirtualizedLogContent
+                    lines={logLines}
+                    highlightedLines={highlightedLines}
+                    selectedLine={selectedLine}
+                    onLineClick={handleLineClick}
+                    isDarkMode={isDarkMode}
+                    scrollToLine={selectedLine ?? displayedRange?.start}
+                    codeClassName={codeClassName}
+                    highlightRange={displayedRange}
+                    lineNumberStart={displayBase}
+                    scrollAdjust={scrollAdjust}
+                  />
+                  {windowMeta && !windowMeta.atEof && (
+                    <button
+                      onClick={expandDown}
+                      disabled={expanding !== null}
+                      className="expand-window-button"
+                      title="Load later log context"
+                    >
+                      {expanding === 'down'
+                        ? 'Loading…'
+                        : `⬇ Load ${formatByteSize(windowMeta.totalSize !== null ? Math.min(WINDOW_CHUNK_BYTES, windowMeta.totalSize - windowMeta.endByte) : WINDOW_CHUNK_BYTES)} later${windowMeta.totalSize !== null ? ` (${formatByteSize(windowMeta.totalSize - windowMeta.endByte)} below)` : ''}`}
+                    </button>
+                  )}
+                </>
               ) : (
                 <div className="log-content-wrapper">
                   <div

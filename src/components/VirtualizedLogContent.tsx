@@ -12,6 +12,12 @@ interface VirtualizedLogContentProps {
   // 1-based inclusive line range to mark as a block (e.g. the section of a
   // shared client log belonging to one test).
   highlightRange?: { start: number; end: number } | null;
+  // Line number displayed for the first loaded line. Windowed views of
+  // large logs start mid-file, so displayed numbers are offset.
+  lineNumberStart?: number;
+  // One-shot scroll compensation (in px) after lines are prepended, keyed
+  // so repeat adjustments of the same size still apply.
+  scrollAdjust?: { px: number; key: number };
 }
 
 const LINE_HEIGHT = 21; // 14px font-size * 1.5 line-height
@@ -25,8 +31,11 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
   scrollToLine,
   codeClassName,
   highlightRange,
+  lineNumberStart = 1,
+  scrollAdjust,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
+  const appliedScrollAdjustKey = useRef<number>(0);
 
   const inRange = (lineNumber: number) =>
     !!highlightRange && lineNumber >= highlightRange.start && lineNumber <= highlightRange.end;
@@ -41,15 +50,28 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
     overscan: 50, // Render 50 extra items above/below viewport for smooth scrolling
   });
 
-  // Scroll to specific line when requested
+  // Scroll to specific line when requested (line numbers are displayed
+  // numbers, i.e. offset by lineNumberStart)
   useEffect(() => {
-    if (scrollToLine && scrollToLine > 0 && scrollToLine <= lines.length) {
+    const index = (scrollToLine ?? 0) - lineNumberStart;
+    if (scrollToLine && index >= 0 && index < lines.length) {
       // Small delay to ensure virtualizer is ready
       setTimeout(() => {
-        virtualizer.scrollToIndex(scrollToLine - 1, { align: 'center', behavior: 'smooth' });
+        virtualizer.scrollToIndex(index, { align: 'center', behavior: 'smooth' });
       }, 100);
     }
-  }, [scrollToLine, virtualizer, lines.length]);
+  }, [scrollToLine, lineNumberStart, virtualizer, lines.length]);
+
+  // Compensate the scroll position after lines were prepended above the
+  // current viewport, so the visible content does not jump.
+  useEffect(() => {
+    if (scrollAdjust && scrollAdjust.key !== appliedScrollAdjustKey.current) {
+      appliedScrollAdjustKey.current = scrollAdjust.key;
+      if (parentRef.current && scrollAdjust.px !== 0) {
+        parentRef.current.scrollTop += scrollAdjust.px;
+      }
+    }
+  }, [scrollAdjust]);
 
   const handleLineClick = useCallback(
     (lineNumber: number) => {
@@ -110,7 +132,7 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
           }}
         >
           {virtualItems.map((virtualRow) => {
-            const lineNumber = virtualRow.index + 1;
+            const lineNumber = virtualRow.index + lineNumberStart;
             const isSelected = selectedLine === lineNumber;
 
             return (
@@ -164,7 +186,7 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
           }}
         >
           {virtualItems.map((virtualRow) => {
-            const lineNumber = virtualRow.index + 1;
+            const lineNumber = virtualRow.index + lineNumberStart;
             const isSelected = selectedLine === lineNumber;
 
             return (
