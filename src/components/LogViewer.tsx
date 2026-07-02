@@ -32,6 +32,8 @@ import {
   formatByteSize,
   type LineRange,
 } from '../utils/byteRange';
+import { LogTestSegmentList } from './LogTestSegments';
+import { useLogTestSegments, type LogTestSegment } from '../hooks/useLogTestSegments';
 
 // Windowed mode: how much context is loaded around the test's byte range,
 // and how much each "load more" click adds.
@@ -89,6 +91,7 @@ const LogViewer = () => {
   const [absFirstLine, setAbsFirstLine] = useState<number | null>(null);
   const [fullRequested, setFullRequested] = useState<boolean>(false);
   const [expanding, setExpanding] = useState<'up' | 'down' | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   // Scroll compensation after prepending lines, keyed to force effect runs.
   const [scrollAdjust, setScrollAdjust] = useState<{ px: number; key: number }>({ px: 0, key: 0 });
 
@@ -403,6 +406,21 @@ const LogViewer = () => {
     ? { start: rangeLines.start + displayBase - 1, end: rangeLines.end + displayBase - 1 }
     : null;
 
+  // Tests contained in this log file, in log order (only present when the
+  // client was shared across tests). Enables log -> test navigation.
+  const segments = useLogTestSegments(group, suiteId, decodeURIComponent(logFile));
+
+  const handleSegmentSelect = useCallback(
+    (segment: LogTestSegment) => {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('begin', segment.begin.toString());
+      newParams.set('end', segment.end.toString());
+      newParams.delete('line');
+      setSearchParams(newParams);
+    },
+    [searchParams, setSearchParams]
+  );
+
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -695,6 +713,16 @@ const LogViewer = () => {
                       <span>Applying syntax highlighting... {highlightProgress}%</span>
                     </div>
                   )}
+                  {segments.length > 0 && (
+                    <button
+                      onClick={() => setSidebarOpen((v) => !v)}
+                      className="raw-log-link"
+                      style={{ border: 'none', cursor: 'pointer' }}
+                      title="Show or hide the tests contained in this log"
+                    >
+                      {sidebarOpen ? 'Hide tests' : `Tests in log (${segments.length.toLocaleString()})`}
+                    </button>
+                  )}
                   {windowMeta && (
                     <button
                       onClick={() => setFullRequested(true)}
@@ -717,44 +745,57 @@ const LogViewer = () => {
               </div>
 
               {logConfig?.enableVirtualization ? (
-                <>
-                  {windowMeta && windowMeta.startByte > 0 && (
-                    <button
-                      onClick={expandUp}
-                      disabled={expanding !== null}
-                      className="expand-window-button"
-                      title="Load earlier log context"
-                    >
-                      {expanding === 'up'
-                        ? 'Loading…'
-                        : `⬆ Load ${formatByteSize(Math.min(WINDOW_CHUNK_BYTES, windowMeta.startByte))} earlier (${formatByteSize(windowMeta.startByte)} above)`}
-                    </button>
+                <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    {windowMeta && windowMeta.startByte > 0 && (
+                      <button
+                        onClick={expandUp}
+                        disabled={expanding !== null}
+                        className="expand-window-button"
+                        title="Load earlier log context"
+                      >
+                        {expanding === 'up'
+                          ? 'Loading…'
+                          : `⬆ Load ${formatByteSize(Math.min(WINDOW_CHUNK_BYTES, windowMeta.startByte))} earlier (${formatByteSize(windowMeta.startByte)} above)`}
+                      </button>
+                    )}
+                    <VirtualizedLogContent
+                      lines={logLines}
+                      highlightedLines={highlightedLines}
+                      selectedLine={selectedLine}
+                      onLineClick={handleLineClick}
+                      isDarkMode={isDarkMode}
+                      scrollToLine={selectedLine ?? displayedRange?.start}
+                      codeClassName={codeClassName}
+                      highlightRange={displayedRange}
+                      lineNumberStart={displayBase}
+                      scrollAdjust={scrollAdjust}
+                    />
+                    {windowMeta && !windowMeta.atEof && (
+                      <button
+                        onClick={expandDown}
+                        disabled={expanding !== null}
+                        className="expand-window-button"
+                        title="Load later log context"
+                      >
+                        {expanding === 'down'
+                          ? 'Loading…'
+                          : `⬇ Load ${formatByteSize(windowMeta.totalSize !== null ? Math.min(WINDOW_CHUNK_BYTES, windowMeta.totalSize - windowMeta.endByte) : WINDOW_CHUNK_BYTES)} later${windowMeta.totalSize !== null ? ` (${formatByteSize(windowMeta.totalSize - windowMeta.endByte)} below)` : ''}`}
+                      </button>
+                    )}
+                  </div>
+                  {sidebarOpen && segments.length > 0 && (
+                    <LogTestSegmentList
+                      segments={segments}
+                      discoveryName={group}
+                      suiteId={suiteId}
+                      currentBegin={beginByte}
+                      currentEnd={endByte}
+                      onSelect={handleSegmentSelect}
+                      isDarkMode={isDarkMode}
+                    />
                   )}
-                  <VirtualizedLogContent
-                    lines={logLines}
-                    highlightedLines={highlightedLines}
-                    selectedLine={selectedLine}
-                    onLineClick={handleLineClick}
-                    isDarkMode={isDarkMode}
-                    scrollToLine={selectedLine ?? displayedRange?.start}
-                    codeClassName={codeClassName}
-                    highlightRange={displayedRange}
-                    lineNumberStart={displayBase}
-                    scrollAdjust={scrollAdjust}
-                  />
-                  {windowMeta && !windowMeta.atEof && (
-                    <button
-                      onClick={expandDown}
-                      disabled={expanding !== null}
-                      className="expand-window-button"
-                      title="Load later log context"
-                    >
-                      {expanding === 'down'
-                        ? 'Loading…'
-                        : `⬇ Load ${formatByteSize(windowMeta.totalSize !== null ? Math.min(WINDOW_CHUNK_BYTES, windowMeta.totalSize - windowMeta.endByte) : WINDOW_CHUNK_BYTES)} later${windowMeta.totalSize !== null ? ` (${formatByteSize(windowMeta.totalSize - windowMeta.endByte)} below)` : ''}`}
-                    </button>
-                  )}
-                </>
+                </div>
               ) : (
                 <div className="log-content-wrapper">
                   <div

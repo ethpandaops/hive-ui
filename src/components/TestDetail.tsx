@@ -9,6 +9,7 @@ import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
 import Breadcrumb from './Breadcrumb';
 import TestDetailsTable from './TestDetailsTable';
+import SharedClientsPanel from './SharedClientsPanel';
 import CommandDisplay from './CommandDisplay';
 import ConfigViewer from './ConfigViewer';
 import VersionInfo from './VersionInfo';
@@ -1384,6 +1385,13 @@ const TestDetail = () => {
                   )}
                 </div>
               )}
+
+              {/* Shared client sessions (multi-test mode), when present */}
+              <SharedClientsPanel
+                testDetail={testDetail}
+                discoveryName={discoveryName || ''}
+                suiteid={suiteid || ''}
+              />
 
               {/* Use the new TestDetailsTable component */}
               <TestDetailsTable
