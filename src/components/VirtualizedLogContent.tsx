@@ -15,9 +15,10 @@ interface VirtualizedLogContentProps {
   // Line number displayed for the first loaded line. Windowed views of
   // large logs start mid-file, so displayed numbers are offset.
   lineNumberStart?: number;
-  // One-shot scroll compensation (in px) after lines are prepended, keyed
-  // so repeat adjustments of the same size still apply.
-  scrollAdjust?: { px: number; key: number };
+  // One-shot notification that `count` lines were prepended, keyed so
+  // repeat prepends of the same size still apply; the scroll position is
+  // compensated so the visible content does not jump.
+  prependedLines?: { count: number; key: number };
 }
 
 const LINE_HEIGHT = 21; // 14px font-size * 1.5 line-height
@@ -32,10 +33,10 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
   codeClassName,
   highlightRange,
   lineNumberStart = 1,
-  scrollAdjust,
+  prependedLines,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
-  const appliedScrollAdjustKey = useRef<number>(0);
+  const appliedPrependKey = useRef<number>(0);
 
   const inRange = (lineNumber: number) =>
     !!highlightRange && lineNumber >= highlightRange.start && lineNumber <= highlightRange.end;
@@ -67,13 +68,13 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
   // Compensate the scroll position after lines were prepended above the
   // current viewport, so the visible content does not jump.
   useEffect(() => {
-    if (scrollAdjust && scrollAdjust.key !== appliedScrollAdjustKey.current) {
-      appliedScrollAdjustKey.current = scrollAdjust.key;
-      if (parentRef.current && scrollAdjust.px !== 0) {
-        parentRef.current.scrollTop += scrollAdjust.px;
+    if (prependedLines && prependedLines.key !== appliedPrependKey.current) {
+      appliedPrependKey.current = prependedLines.key;
+      if (parentRef.current && prependedLines.count > 0) {
+        parentRef.current.scrollTop += prependedLines.count * LINE_HEIGHT;
       }
     }
-  }, [scrollAdjust]);
+  }, [prependedLines]);
 
   const handleLineClick = useCallback(
     (lineNumber: number) => {

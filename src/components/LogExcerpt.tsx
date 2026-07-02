@@ -7,12 +7,13 @@ import 'prismjs/components/prism-log';
 import { usePrismTheme } from './PrismTheme';
 import {
   countLines,
-  countLinesBefore,
   decodeBytes,
   fetchByteRange,
   formatByteSize,
   lineNumberAt,
+  resolveLineNumber,
 } from '../utils/byteRange';
+import { logViewerUrl } from '../utils/urls';
 
 interface LogExcerptProps {
   discoveryName: string;
@@ -31,11 +32,6 @@ interface LogExcerptProps {
 // have per-test ranges spanning megabytes.
 const DEFAULT_MAX_EXCERPT_BYTES = 128 * 1024;
 
-// Absolute line numbers require counting the newlines before the excerpt.
-// Only do that automatically when the prefix is reasonably small; for
-// excerpts deep inside very large logs, show byte offsets only.
-const LINE_COUNT_AUTO_LIMIT_BYTES = 8 * 1024 * 1024;
-
 const LogExcerpt: React.FC<LogExcerptProps> = ({
   discoveryName,
   logFile,
@@ -48,10 +44,10 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
   const [logContent, setLogContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [truncated, setTruncated] = useState<boolean>(false);
   // Absolute line range of the displayed excerpt, once counted.
   const [lineRange, setLineRange] = useState<{ start: number; end: number } | null>(null);
   const { codeClassName } = usePrismTheme(isDarkMode);
+  const truncated = endByte - beginByte > maxBytes;
 
   // Fetch directories to get the discovery address
   const { data: directories } = useQuery({
@@ -84,21 +80,23 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
         const cappedEnd = Math.min(endByte, beginByte + maxBytes);
         const result = await fetchByteRange(logFilePath, { begin: beginByte, end: cappedEnd });
 
-        setTruncated(cappedEnd < endByte);
         setLogContent(decodeBytes(result.bytes));
         setLoading(false);
 
         // Resolve the absolute line numbers of the excerpt by counting the
         // newlines before it: directly when the server already returned the
-        // whole file, otherwise by streaming the prefix in the background
-        // (skipped for excerpts deep inside very large logs).
+        // whole file, otherwise in the background (bounded and cached per
+        // file; null means the excerpt is too deep to count affordably).
         const excerptLines = countLines(result.bytes);
-        const applyStart = (start: number) =>
-          setLineRange({ start, end: start + Math.max(excerptLines, 1) - 1 });
+        const applyStart = (start: number | null) => {
+          if (start !== null) {
+            setLineRange({ start, end: start + Math.max(excerptLines, 1) - 1 });
+          }
+        };
         if (result.fullBody) {
           applyStart(lineNumberAt(result.fullBody, beginByte));
-        } else if (beginByte <= LINE_COUNT_AUTO_LIMIT_BYTES) {
-          countLinesBefore(logFilePath, beginByte, abort.signal)
+        } else {
+          resolveLineNumber(logFilePath, beginByte, abort.signal)
             .then(applyStart)
             .catch(() => undefined);
         }
@@ -147,7 +145,7 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
         flexWrap: 'wrap'
       }}>
         <Link
-          to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(logFile)}?begin=${beginByte}&end=${endByte}`}
+          to={logViewerUrl(discoveryName, suiteid, logFile, { begin: beginByte, end: endByte })}
           target="_blank"
           rel="noopener noreferrer"
           style={{

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchDirectories, fetchTestDetail } from '../services/api';
-import { TestDetail } from '../types';
+import { TestDetail, isRealTestCase } from '../types';
 
 // A section of a shared client log belonging to one test case.
 export interface LogTestSegment {
@@ -47,13 +47,16 @@ export function useLogTestSegments(
     queryKey: ['testDetail', discoveryAddress, fileName],
     queryFn: () => fetchTestDetail(discoveryAddress, fileName),
     enabled: !!discoveryAddress && !!suiteId,
+    // Completed suite JSONs are immutable and can be ~20 MB; never refetch
+    // them on refocus.
+    staleTime: Infinity,
   });
 
   return useMemo(() => {
     if (!testDetail) return [];
     const segments: LogTestSegment[] = [];
     for (const [testId, testCase] of Object.entries(testDetail.testCases)) {
-      if (testCase.multiTestContext || !testCase.clientInfo) continue;
+      if (!isRealTestCase(testCase) || !testCase.clientInfo) continue;
       for (const client of Object.values(testCase.clientInfo)) {
         if (client.logFile === logFile && client.logOffsets) {
           segments.push({

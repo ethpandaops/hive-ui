@@ -56,8 +56,15 @@ export interface TestCaseDetail {
   summaryResult: TestSummaryResult;
   clientInfo: Record<string, TestClientInfo>;
   // True for the pseudo test case that owns the lifecycle of clients shared
-  // across multiple tests. Not a real test; hidden from the results table.
+  // across multiple tests. Not a real test; see isRealTestCase.
   multiTestContext?: boolean;
+}
+
+// Multi-test context entries are lifecycle owners for shared clients, not
+// real tests: keep them out of test listings, stats, and log navigation.
+// (They are surfaced separately, e.g. by the shared-clients panel.)
+export function isRealTestCase(testCase: TestCaseDetail): boolean {
+  return !testCase.multiTestContext;
 }
 
 export interface RunMetadata {

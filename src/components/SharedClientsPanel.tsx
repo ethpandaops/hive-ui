@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, isValid } from 'date-fns';
-import { TestDetail, TestCaseDetail } from '../types';
+import { TestDetail, isRealTestCase } from '../types';
 import { useTheme } from '../contexts/useTheme';
 import { formatByteSize } from '../utils/byteRange';
+import { logViewerUrl } from '../utils/urls';
 
 interface SharedClientsPanelProps {
   testDetail: TestDetail;
@@ -26,10 +27,7 @@ const SharedClientsPanel: React.FC<SharedClientsPanelProps> = ({
   const [showAll, setShowAll] = useState(false);
 
   const contextCases = useMemo(
-    () =>
-      Object.values(testDetail.testCases).filter(
-        (testCase): testCase is TestCaseDetail => !!testCase.multiTestContext
-      ),
+    () => Object.values(testDetail.testCases).filter((testCase) => !isRealTestCase(testCase)),
     [testDetail]
   );
 
@@ -37,7 +35,7 @@ const SharedClientsPanel: React.FC<SharedClientsPanelProps> = ({
   const testsPerLog = useMemo(() => {
     const counts = new Map<string, number>();
     for (const testCase of Object.values(testDetail.testCases)) {
-      if (testCase.multiTestContext || !testCase.clientInfo) continue;
+      if (!isRealTestCase(testCase) || !testCase.clientInfo) continue;
       for (const client of Object.values(testCase.clientInfo)) {
         if (client.logFile) {
           counts.set(client.logFile, (counts.get(client.logFile) || 0) + 1);
@@ -58,8 +56,8 @@ const SharedClientsPanel: React.FC<SharedClientsPanelProps> = ({
   const lifecycleClean = contextCases.every((testCase) => testCase.summaryResult.pass);
   const shownClients = showAll ? clients : clients.slice(0, COLLAPSED_ROW_COUNT);
 
-  const border = `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`;
-  const secondaryText = { color: isDarkMode ? '#94a3b8' : '#64748b' };
+  const border = '1px solid var(--border-color)';
+  const secondaryText = { color: 'var(--text-secondary)' };
   const cellStyle: React.CSSProperties = {
     padding: '0.4rem 0.75rem',
     fontSize: '0.75rem',
@@ -154,7 +152,7 @@ const SharedClientsPanel: React.FC<SharedClientsPanelProps> = ({
                 </td>
                 <td style={cellStyle}>
                   <Link
-                    to={`/logs/${discoveryName}/${suiteid}/${encodeURIComponent(client.logFile)}`}
+                    to={logViewerUrl(discoveryName, suiteid, client.logFile)}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: '#6366f1', textDecoration: 'none' }}

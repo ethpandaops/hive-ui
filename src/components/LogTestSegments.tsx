@@ -58,7 +58,7 @@ export const LogTestSegmentList: React.FC<LogTestSegmentListProps> = ({
     }
   }, [currentIndex, virtualizer]);
 
-  const border = `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`;
+  const border = '1px solid var(--border-color)';
 
   return (
     <div

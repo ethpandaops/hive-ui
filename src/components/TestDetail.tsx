@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchDirectories, fetchTestDetail, fetchTestRuns } from '../services/api';
-import { TestDetail as TestDetailType, TestRun } from '../types';
+import { TestDetail as TestDetailType, TestRun, isRealTestCase } from '../types';
 import { format, isValid } from 'date-fns';
 import Header from './Header';
 import Footer from './Footer';
@@ -108,11 +108,10 @@ const TestDetail = () => {
     return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
   };
 
-  // Calculate test stats. Multi-test context entries are shared-client
-  // lifecycle owners, not real tests; keep them out of the pass/fail counts.
+  // Calculate test stats
   const testStats = testDetail ? Object.values(testDetail.testCases).reduce(
     (acc, testCase) => {
-      if (testCase.multiTestContext) {
+      if (!isRealTestCase(testCase)) {
         return acc;
       }
       if (testCase.summaryResult.pass) {
