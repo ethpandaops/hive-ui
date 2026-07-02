@@ -57,7 +57,9 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
     if (scrollToLine && index >= 0 && index < lines.length) {
       // Small delay to ensure virtualizer is ready
       setTimeout(() => {
-        virtualizer.scrollToIndex(index, { align: 'center', behavior: 'smooth' });
+        // Instant jump: tanstack-virtual smooth scrolling does not reliably
+        // complete over long distances on a freshly mounted virtualizer.
+        virtualizer.scrollToIndex(index, { align: 'center', behavior: 'auto' });
       }, 100);
     }
   }, [scrollToLine, lineNumberStart, virtualizer, lines.length]);
