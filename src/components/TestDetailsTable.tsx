@@ -845,16 +845,22 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                                         {client.id}
                                       </span>
                                     </h4>
-                                    <div style={excerptWrapperStyle}>
-                                      <LogExcerpt
-                                        discoveryName={discoveryName}
-                                        logFile={client.logFile}
-                                        beginByte={client.logOffsets!.begin}
-                                        endByte={client.logOffsets!.end}
-                                        isDarkMode={isDarkMode}
-                                        suiteid={suiteid}
-                                      />
-                                    </div>
+                                    {client.logOffsets!.end > client.logOffsets!.begin ? (
+                                      <div style={excerptWrapperStyle}>
+                                        <LogExcerpt
+                                          discoveryName={discoveryName}
+                                          logFile={client.logFile}
+                                          beginByte={client.logOffsets!.begin}
+                                          endByte={client.logOffsets!.end}
+                                          isDarkMode={isDarkMode}
+                                          suiteid={suiteid}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div style={{ ...lightTextStyle, fontSize: '0.75rem' }}>
+                                        No client output was recorded during this test.
+                                      </div>
+                                    )}
                                   </React.Fragment>
                                 ))}
                               <h4 style={{ ...sectionHeadingStyle, marginTop: 0 }}>Description</h4>

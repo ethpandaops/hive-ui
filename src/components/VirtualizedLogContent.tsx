@@ -55,14 +55,15 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
   // numbers, i.e. offset by lineNumberStart)
   useEffect(() => {
     const index = (scrollToLine ?? 0) - lineNumberStart;
-    if (scrollToLine && index >= 0 && index < lines.length) {
-      // Small delay to ensure virtualizer is ready
-      setTimeout(() => {
-        // Instant jump: tanstack-virtual smooth scrolling does not reliably
-        // complete over long distances on a freshly mounted virtualizer.
-        virtualizer.scrollToIndex(index, { align: 'center', behavior: 'auto' });
-      }, 100);
-    }
+    if (!scrollToLine || index < 0 || index >= lines.length) return;
+    // Small delay to ensure virtualizer is ready; cleared on re-run so a
+    // pending scroll never fires against an outdated index.
+    const timeout = setTimeout(() => {
+      // Instant jump: tanstack-virtual smooth scrolling does not reliably
+      // complete over long distances on a freshly mounted virtualizer.
+      virtualizer.scrollToIndex(index, { align: 'center', behavior: 'auto' });
+    }, 100);
+    return () => clearTimeout(timeout);
   }, [scrollToLine, lineNumberStart, virtualizer, lines.length]);
 
   // Compensate the scroll position after lines were prepended above the

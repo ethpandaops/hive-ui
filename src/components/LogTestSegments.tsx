@@ -49,13 +49,15 @@ export const LogTestSegmentList: React.FC<LogTestSegmentListProps> = ({
     [shown, currentBegin, currentEnd]
   );
 
-  // Keep the current test visible in the sidebar.
+  // Keep the current test visible in the sidebar. The timeout is cleared on
+  // re-run so a pending scroll never fires against an outdated index (the
+  // list length changes when the failures filter is toggled).
   useEffect(() => {
-    if (currentIndex >= 0) {
-      setTimeout(() => {
-        virtualizer.scrollToIndex(currentIndex, { align: 'center' });
-      }, 100);
-    }
+    if (currentIndex < 0) return;
+    const timeout = setTimeout(() => {
+      virtualizer.scrollToIndex(currentIndex, { align: 'center' });
+    }, 100);
+    return () => clearTimeout(timeout);
   }, [currentIndex, virtualizer]);
 
   const border = '1px solid var(--border-color)';
@@ -118,6 +120,9 @@ export const LogTestSegmentList: React.FC<LogTestSegmentListProps> = ({
         <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
           {virtualizer.getVirtualItems().map((row) => {
             const segment = shown[row.index];
+            // Virtual rows can momentarily outlive a shrinking list while
+            // the filter toggles.
+            if (!segment) return null;
             const isCurrent = row.index === currentIndex;
             return (
               <div

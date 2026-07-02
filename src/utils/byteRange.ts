@@ -18,8 +18,13 @@ export interface RangeFetchResult {
 // taken client-side so callers always get exactly the requested range.
 // A range end past EOF is fine; servers clamp it (RFC 9110).
 export async function fetchByteRange(url: string, range: TestLogOffsets): Promise<RangeFetchResult> {
+  // Empty ranges occur in real data (a client that produced no output
+  // during a test); requesting them can even yield 416 at EOF.
+  if (range.end <= range.begin) {
+    return { bytes: new Uint8Array(0), totalSize: null, fullBody: null };
+  }
   // HTTP Range is inclusive on both ends; TestLogOffsets.end is exclusive.
-  const lastByte = Math.max(range.begin, range.end - 1);
+  const lastByte = range.end - 1;
   const response = await fetch(url, {
     headers: { Range: `bytes=${range.begin}-${lastByte}` },
   });
