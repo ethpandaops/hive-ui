@@ -82,16 +82,19 @@ export interface LineRange {
 // covers in the buffer. A range ending right after a newline does not
 // extend the highlight into the following line.
 export function byteRangeToLineRange(bytes: Uint8Array, range: TestLogOffsets): LineRange {
+  // Clamp to the actual buffer; offsets can exceed it if the file was
+  // truncated or still being written when the results were captured.
+  const begin = Math.min(Math.max(range.begin, 0), bytes.length);
+  const stop = Math.min(Math.max(range.end, begin), bytes.length);
   let line = 1;
   let start = 1;
-  const stop = Math.min(range.end, bytes.length);
   for (let i = 0; i < stop; i++) {
-    if (i === range.begin) start = line;
+    if (i === begin) start = line;
     if (bytes[i] === NEWLINE) line++;
   }
-  if (range.begin >= stop) start = line;
+  if (begin >= stop) start = line;
   let end = line;
-  if (range.end > 0 && range.end <= bytes.length && bytes[range.end - 1] === NEWLINE) {
+  if (stop > 0 && bytes[stop - 1] === NEWLINE) {
     end = Math.max(start, end - 1);
   }
   return { start, end };
