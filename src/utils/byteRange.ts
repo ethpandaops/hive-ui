@@ -160,6 +160,11 @@ function countNewlines(bytes: Uint8Array, limit: number): number {
   return newlines;
 }
 
+// The 1-based line number at which byte `offset` of the buffer starts.
+export function lineNumberAt(bytes: Uint8Array, offset: number): number {
+  return countNewlines(bytes, offset) + 1;
+}
+
 const utf8Decoder = new TextDecoder();
 
 export function decodeBytes(bytes: Uint8Array): string {
