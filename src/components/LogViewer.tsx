@@ -22,6 +22,7 @@ import {
   type LogFileConfig,
 } from '../utils/logFileUtils';
 import { highlightLinesAsync } from '../utils/chunkHighlighter';
+import { byteRangeToLineRange, decodeBytes, type LineRange } from '../utils/byteRange';
 
 const LogViewer = () => {
   const params = useParams<{ group: string; suiteId: string; logFile: string }>();
@@ -43,6 +44,9 @@ const LogViewer = () => {
   const [highlightProgress, setHighlightProgress] = useState<number>(0);
   const [isHighlighting, setIsHighlighting] = useState<boolean>(false);
 
+  // Line range covered by the anchored byte range, once computed.
+  const [rangeLines, setRangeLines] = useState<LineRange | null>(null);
+
   // Create refs to access DOM elements directly
   const logContentRef = useRef<HTMLPreElement>(null);
   const cancelHighlightRef = useRef<(() => void) | null>(null);
@@ -54,7 +58,9 @@ const LogViewer = () => {
   // Get the line number from URL query params
   const selectedLine = searchParams.get('line') ? parseInt(searchParams.get('line') || '0') : null;
 
-  // Get byte range parameters from URL query params
+  // Byte range [begin, end) to anchor on: the log section belonging to one
+  // test when the client log is shared across tests (hive TestLogOffsets).
+  // The full file is loaded and the range highlighted and scrolled to.
   const beginByte = searchParams.get('begin') ? parseInt(searchParams.get('begin') || '0') : null;
   const endByte = searchParams.get('end') ? parseInt(searchParams.get('end') || '0') : null;
 
@@ -155,24 +161,26 @@ const LogViewer = () => {
         setError(null);
         setHighlightedLines(new Map());
         setHighlightProgress(0);
+        setRangeLines(null);
 
         // Construct the URL to fetch the log file
         const logFilePath = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
 
-        // Use range request if both begin and end bytes are provided
-        const headers: HeadersInit = {};
-        if (beginByte !== null && endByte !== null) {
-          headers['Range'] = `bytes=${beginByte}-${endByte}`;
-        }
-
-        const response = await fetch(logFilePath, { headers });
-
-        if (!response.ok && response.status !== 206) {
+        const response = await fetch(logFilePath);
+        if (!response.ok) {
           throw new Error(`Failed to fetch log file: ${response.statusText}`);
         }
 
-        const text = await response.text();
-        console.log(`[DEBUG] Log file fetched, length: ${text.length}`);
+        let text: string;
+        if (beginByte !== null && endByte !== null) {
+          // Byte offsets refer to raw bytes, so the byte-to-line mapping
+          // must be computed on bytes, not on the decoded string.
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          setRangeLines(byteRangeToLineRange(bytes, { begin: beginByte, end: endByte }));
+          text = decodeBytes(bytes);
+        } else {
+          text = await response.text();
+        }
         setLogContent(text);
 
         // Calculate line count and file size
@@ -183,10 +191,14 @@ const LogViewer = () => {
         const sizeBytes = getFileSizeBytes(text);
         setFileSize(formatBytes(sizeBytes));
 
-        // Classify file and determine rendering mode
+        // Classify file and determine rendering mode. Anchored views always
+        // use the virtualized renderer, which supports range highlighting.
         const config = classifyLogFile(finalLineCount, sizeBytes);
+        if (beginByte !== null && endByte !== null) {
+          config.enableVirtualization = true;
+          config.mode = 'large';
+        }
         setLogConfig(config);
-        console.log(`[DEBUG] Log config: mode=${config.mode}, virtualization=${config.enableVirtualization}`);
 
         // Generate line numbers array (for small files)
         if (!config.enableVirtualization) {
@@ -215,13 +227,9 @@ const LogViewer = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Helper function to get log URL with optional byte range parameters
-  const getLogUrl = (includeRange: boolean = false): string => {
-    const baseUrl = `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
-    if (includeRange && beginByte !== null && endByte !== null) {
-      return `${baseUrl}#:~:text=${beginByte},${endByte}`;
-    }
-    return baseUrl;
+  // Helper function to get the raw log URL
+  const getLogUrl = (): string => {
+    return `${discoveryAddress}/results/${decodeURIComponent(logFile)}`;
   };
 
   // Inject styles and handle theme switching
@@ -443,7 +451,20 @@ const LogViewer = () => {
                   <div className="log-stats">
                     {lineCount.toLocaleString()} lines · {fileSize}
                     {selectedLine && ` · Line ${selectedLine} selected`}
-                    {beginByte !== null && endByte !== null && ` · Bytes ${beginByte}-${endByte}`}
+                    {rangeLines && (
+                      <span>
+                        {' · '}
+                        <span
+                          style={{
+                            backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.15)',
+                            borderRadius: '4px',
+                            padding: '1px 6px',
+                          }}
+                        >
+                          Test section: lines {rangeLines.start.toLocaleString()}–{rangeLines.end.toLocaleString()}
+                        </span>
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -454,7 +475,7 @@ const LogViewer = () => {
                     </div>
                   )}
                   <a
-                    href={getLogUrl(true)}
+                    href={getLogUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="raw-log-link"
@@ -471,8 +492,9 @@ const LogViewer = () => {
                   selectedLine={selectedLine}
                   onLineClick={handleLineClick}
                   isDarkMode={isDarkMode}
-                  scrollToLine={selectedLine}
+                  scrollToLine={selectedLine ?? rangeLines?.start}
                   codeClassName={codeClassName}
+                  highlightRange={rangeLines}
                 />
               ) : (
                 <div className="log-content-wrapper">

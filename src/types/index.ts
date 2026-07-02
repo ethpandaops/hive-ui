@@ -24,20 +24,28 @@ export interface TestGroup {
   runs: TestRun[];
 }
 
+// Byte offsets into a log file, [begin, end) exclusive on end.
+// Emitted by hive when a client container is shared across multiple tests
+// (ethereum/hive#1402); identifies the log section relevant to one test.
+export interface TestLogOffsets {
+  begin: number;
+  end: number;
+}
+
 export interface TestClientInfo {
   id: string;
   ip: string;
   name: string;
   instantiatedAt: string;
   logFile: string;
+  logOffsets?: TestLogOffsets;
 }
 
 export interface TestSummaryResult {
   pass: boolean;
-  log: {
-    begin: number;
-    end: number;
-  };
+  timeout?: boolean;
+  details?: string;
+  log?: TestLogOffsets;
 }
 
 export interface TestCaseDetail {
@@ -47,6 +55,9 @@ export interface TestCaseDetail {
   end: string;
   summaryResult: TestSummaryResult;
   clientInfo: Record<string, TestClientInfo>;
+  // True for the pseudo test case that owns the lifecycle of clients shared
+  // across multiple tests. Not a real test; hidden from the results table.
+  multiTestContext?: boolean;
 }
 
 export interface RunMetadata {

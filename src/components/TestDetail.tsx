@@ -107,9 +107,13 @@ const TestDetail = () => {
     return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
   };
 
-  // Calculate test stats
+  // Calculate test stats. Multi-test context entries are shared-client
+  // lifecycle owners, not real tests; keep them out of the pass/fail counts.
   const testStats = testDetail ? Object.values(testDetail.testCases).reduce(
     (acc, testCase) => {
+      if (testCase.multiTestContext) {
+        return acc;
+      }
       if (testCase.summaryResult.pass) {
         acc.passes += 1;
       } else {

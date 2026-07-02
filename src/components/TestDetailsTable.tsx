@@ -42,8 +42,10 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
   const expandedTestId = propExpandedTestId !== undefined ? propExpandedTestId : localExpandedTestId;
   const setExpandedTestId = propSetExpandedTestId || setLocalExpandedTestId;
 
-  // Filter test cases by search term
+  // Filter test cases by search term. Multi-test context entries are
+  // lifecycle owners for shared clients, not real tests; hide them here.
   const filteredTestCases = testDetail ? Object.entries(testDetail.testCases)
+    .filter(([, testCase]) => !testCase.multiTestContext)
     .filter(([, testCase]) =>
       searchTerm ? testCase.name.toLowerCase().includes(searchTerm.toLowerCase()) : true
     ) : [];
@@ -92,6 +94,16 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     }
 
     return range;
+  };
+
+  // URL for a client's log; anchors the viewer on the test's byte range
+  // when the client was shared across tests (logOffsets present).
+  const clientLogUrl = (client?: { logFile: string; logOffsets?: { begin: number; end: number } }) => {
+    if (!client) return '';
+    const base = `/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(client.logFile)}`;
+    return client.logOffsets
+      ? `${base}?begin=${client.logOffsets.begin}&end=${client.logOffsets.end}`
+      : base;
   };
 
   // Toggle expanded state for a test
@@ -727,7 +739,10 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                     <td style={tableCellStyle} onClick={(e) => e.stopPropagation()}>
                       {testCase.clientInfo && Object.values(testCase.clientInfo)[0]?.logFile && (
                         <Link
-                          to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(Object.values(testCase.clientInfo)[0]?.logFile || '')}`}
+                          to={clientLogUrl(Object.values(testCase.clientInfo)[0])}
+                          title={Object.values(testCase.clientInfo)[0]?.logOffsets
+                            ? 'Client log, positioned at this test’s section'
+                            : 'Client log'}
                           target="_blank"
                           rel="noopener noreferrer"
                         style={{
@@ -786,7 +801,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                               {/* Log excerpt section */}
                               {testCase.summaryResult.log && testDetail.testDetailsLog && (
                                 <>
-                                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Log Excerpt</h4>
+                                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Test Log</h4>
                                   <div style={{
                                     width: '100%',
                                     maxWidth: '100%',
@@ -804,6 +819,33 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                                   </div>
                                 </>
                               )}
+                              {testCase.clientInfo && Object.values(testCase.clientInfo)
+                                .filter((client) => client.logFile && client.logOffsets)
+                                .map((client) => (
+                                  <React.Fragment key={client.id}>
+                                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>
+                                      Client Log — {client.name}
+                                      <span style={{ fontWeight: '400', fontFamily: 'monospace', fontSize: '0.75rem', marginLeft: '0.5rem', ...lightTextStyle }}>
+                                        {client.id}
+                                      </span>
+                                    </h4>
+                                    <div style={{
+                                      width: '100%',
+                                      maxWidth: '100%',
+                                      overflowX: 'auto',
+                                      boxSizing: 'border-box'
+                                    }}>
+                                      <LogExcerpt
+                                        discoveryName={discoveryName}
+                                        logFile={client.logFile}
+                                        beginByte={client.logOffsets!.begin}
+                                        endByte={client.logOffsets!.end}
+                                        isDarkMode={isDarkMode}
+                                        suiteid={suiteid}
+                                      />
+                                    </div>
+                                  </React.Fragment>
+                                ))}
                               <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Description</h4>
                               <div style={{ ...lightTextStyle, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
                                 {sanitizeAndRenderHTML(testCase.description)}

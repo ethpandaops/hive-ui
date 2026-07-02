@@ -9,6 +9,9 @@ interface VirtualizedLogContentProps {
   isDarkMode: boolean;
   scrollToLine?: number | null;
   codeClassName: string;
+  // 1-based inclusive line range to mark as a block (e.g. the section of a
+  // shared client log belonging to one test).
+  highlightRange?: { start: number; end: number } | null;
 }
 
 const LINE_HEIGHT = 21; // 14px font-size * 1.5 line-height
@@ -21,8 +24,15 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
   isDarkMode,
   scrollToLine,
   codeClassName,
+  highlightRange,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
+
+  const inRange = (lineNumber: number) =>
+    !!highlightRange && lineNumber >= highlightRange.start && lineNumber <= highlightRange.end;
+
+  const rangeBg = isDarkMode ? 'rgba(59, 130, 246, 0.16)' : 'rgba(59, 130, 246, 0.12)';
+  const rangeGutterBg = isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.22)';
 
   const virtualizer = useVirtualizer({
     count: lines.length,
@@ -125,7 +135,9 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
                     ? isDarkMode
                       ? 'rgba(255, 255, 0, 0.3)'
                       : 'rgba(255, 255, 0, 0.2)'
-                    : 'transparent',
+                    : inRange(lineNumber)
+                      ? rangeGutterBg
+                      : 'transparent',
                   fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
                   fontSize: '14px',
                   lineHeight: '1.5',
@@ -170,7 +182,9 @@ export const VirtualizedLogContent: React.FC<VirtualizedLogContentProps> = ({
                     ? isDarkMode
                       ? 'rgba(255, 255, 0, 0.15)'
                       : 'rgba(255, 255, 0, 0.3)'
-                    : 'transparent',
+                    : inRange(lineNumber)
+                      ? rangeBg
+                      : 'transparent',
                   fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
                   fontSize: '14px',
                   lineHeight: '1.5',
