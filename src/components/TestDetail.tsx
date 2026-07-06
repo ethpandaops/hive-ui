@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchDirectories, fetchTestDetail, fetchTestRuns } from '../services/api';
-import { TestDetail as TestDetailType, TestRun } from '../types';
+import { TestDetail as TestDetailType, TestRun, isRealTestCase } from '../types';
 import { format, isValid } from 'date-fns';
 import Header from './Header';
 import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
 import Breadcrumb from './Breadcrumb';
 import TestDetailsTable from './TestDetailsTable';
+import SharedClientsPanel from './SharedClientsPanel';
 import CommandDisplay from './CommandDisplay';
 import ConfigViewer from './ConfigViewer';
 import VersionInfo from './VersionInfo';
@@ -110,6 +111,9 @@ const TestDetail = () => {
   // Calculate test stats
   const testStats = testDetail ? Object.values(testDetail.testCases).reduce(
     (acc, testCase) => {
+      if (!isRealTestCase(testCase)) {
+        return acc;
+      }
       if (testCase.summaryResult.pass) {
         acc.passes += 1;
       } else {
@@ -1380,6 +1384,13 @@ const TestDetail = () => {
                   )}
                 </div>
               )}
+
+              {/* Shared client sessions (multi-test mode), when present */}
+              <SharedClientsPanel
+                testDetail={testDetail}
+                discoveryName={discoveryName || ''}
+                suiteid={suiteid || ''}
+              />
 
               {/* Use the new TestDetailsTable component */}
               <TestDetailsTable

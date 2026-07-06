@@ -10,6 +10,15 @@ export interface LogFileConfig {
 const SMALL_FILE_MAX_LINES = 10000;
 const SMALL_FILE_MAX_BYTES = 500 * 1024; // 500KB
 
+// Large: use virtualization with async highlighting. Also used directly for
+// views anchored on a byte range, which always render virtualized (the
+// virtualized renderer is what supports range highlighting).
+export const LARGE_LOG_CONFIG: LogFileConfig = {
+  mode: 'large',
+  enableHighlighting: true,
+  enableVirtualization: true,
+};
+
 export function classifyLogFile(lineCount: number, sizeBytes: number): LogFileConfig {
   // Small: < 10K lines AND < 500KB - use sync rendering with highlighting
   if (lineCount < SMALL_FILE_MAX_LINES && sizeBytes < SMALL_FILE_MAX_BYTES) {
@@ -20,12 +29,7 @@ export function classifyLogFile(lineCount: number, sizeBytes: number): LogFileCo
     };
   }
 
-  // Large: anything else - use virtualization with async highlighting
-  return {
-    mode: 'large',
-    enableHighlighting: true,
-    enableVirtualization: true,
-  };
+  return { ...LARGE_LOG_CONFIG };
 }
 
 export function splitIntoLines(content: string): string[] {

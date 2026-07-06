@@ -5,6 +5,15 @@ import { fetchDirectories } from '../services/api';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-log';
 import { usePrismTheme } from './PrismTheme';
+import {
+  countLines,
+  decodeBytes,
+  fetchByteRange,
+  formatByteSize,
+  lineNumberAt,
+  resolveLineNumber,
+} from '../utils/byteRange';
+import { logViewerUrl } from '../utils/urls';
 
 interface LogExcerptProps {
   discoveryName: string;
@@ -13,7 +22,15 @@ interface LogExcerptProps {
   endByte: number;
   isDarkMode: boolean;
   suiteid?: string;
+  // Cap on how many bytes of the range are fetched/rendered inline.
+  // Ranges larger than this are truncated with a notice; the full range
+  // stays reachable through the "View full log" link.
+  maxBytes?: number;
 }
+
+// Fetch at most this much of an excerpt by default; shared client logs can
+// have per-test ranges spanning megabytes.
+const DEFAULT_MAX_EXCERPT_BYTES = 128 * 1024;
 
 const LogExcerpt: React.FC<LogExcerptProps> = ({
   discoveryName,
@@ -21,12 +38,16 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
   beginByte,
   endByte,
   isDarkMode,
-  suiteid = ''
+  suiteid = '',
+  maxBytes = DEFAULT_MAX_EXCERPT_BYTES
 }) => {
   const [logContent, setLogContent] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  // Absolute line range of the displayed excerpt, once counted.
+  const [lineRange, setLineRange] = useState<{ start: number; end: number } | null>(null);
   const { codeClassName } = usePrismTheme(isDarkMode);
+  const truncated = endByte - beginByte > maxBytes;
 
   // Fetch directories to get the discovery address
   const { data: directories } = useQuery({
@@ -38,6 +59,8 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
   const discoveryAddress = directories?.find(dir => dir.name === discoveryName)?.address || '';
 
   useEffect(() => {
+    const abort = new AbortController();
+
     const fetchLogExcerpt = async () => {
       if (!discoveryAddress || !logFile) {
         setLoading(false);
@@ -47,24 +70,36 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
       try {
         setLoading(true);
         setError(null);
+        setLineRange(null);
 
         // Construct the URL to fetch the log file
         const logFilePath = `${discoveryAddress}/results/${encodeURIComponent(logFile)}`;
 
-        // Use range request for the specified byte range
-        const headers: HeadersInit = {
-          'Range': `bytes=${beginByte}-${endByte}`
-        };
+        // Fetch only the excerpt's byte range, capped so that huge
+        // per-test ranges do not stall the expanded row.
+        const cappedEnd = Math.min(endByte, beginByte + maxBytes);
+        const result = await fetchByteRange(logFilePath, { begin: beginByte, end: cappedEnd });
 
-        const response = await fetch(logFilePath, { headers });
-
-        if (!response.ok && response.status !== 206) {
-          throw new Error(`Failed to fetch log excerpt: ${response.statusText}`);
-        }
-
-        const text = await response.text();
-        setLogContent(text);
+        setLogContent(decodeBytes(result.bytes));
         setLoading(false);
+
+        // Resolve the absolute line numbers of the excerpt by counting the
+        // newlines before it: directly when the server already returned the
+        // whole file, otherwise in the background (bounded and cached per
+        // file; null means the excerpt is too deep to count affordably).
+        const excerptLines = countLines(result.bytes);
+        const applyStart = (start: number | null) => {
+          if (start !== null) {
+            setLineRange({ start, end: start + Math.max(excerptLines, 1) - 1 });
+          }
+        };
+        if (result.fullBody) {
+          applyStart(lineNumberAt(result.fullBody, beginByte));
+        } else {
+          resolveLineNumber(logFilePath, beginByte, abort.signal)
+            .then(applyStart)
+            .catch(() => undefined);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLoading(false);
@@ -72,7 +107,8 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
     };
 
     fetchLogExcerpt();
-  }, [discoveryAddress, logFile, beginByte, endByte]);
+    return () => abort.abort();
+  }, [discoveryAddress, logFile, beginByte, endByte, maxBytes]);
 
   // Apply syntax highlighting after content loads
   useEffect(() => {
@@ -109,7 +145,7 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
         flexWrap: 'wrap'
       }}>
         <Link
-          to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(logFile)}?begin=${beginByte}&end=${endByte}`}
+          to={logViewerUrl(discoveryName, suiteid, logFile, { begin: beginByte, end: endByte })}
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -128,9 +164,23 @@ const LogExcerpt: React.FC<LogExcerptProps> = ({
           View full log
         </Link>
         <div style={{ color: isDarkMode ? '#94a3b8' : '#64748b', fontSize: '0.75rem' }}>
-          Bytes {beginByte} to {endByte}
+          {lineRange && `Lines ${lineRange.start.toLocaleString()}–${lineRange.end.toLocaleString()} · `}
+          Bytes {beginByte.toLocaleString()}–{endByte.toLocaleString()} ({formatByteSize(endByte - beginByte)})
         </div>
       </div>
+
+      {truncated && !loading && !error && (
+        <div style={{
+          marginBottom: '0.5rem',
+          padding: '0.375rem 0.5rem',
+          borderRadius: '0.25rem',
+          fontSize: '0.75rem',
+          backgroundColor: isDarkMode ? 'rgba(234, 179, 8, 0.15)' : 'rgba(234, 179, 8, 0.12)',
+          color: isDarkMode ? '#facc15' : '#a16207'
+        }}>
+          Excerpt truncated to the first {formatByteSize(maxBytes)} of this {formatByteSize(endByte - beginByte)} range — use “View full log” for the rest.
+        </div>
+      )}
 
       {loading ? (
         <div style={{ padding: '0.5rem', color: isDarkMode ? '#94a3b8' : '#64748b' }}>

@@ -1,10 +1,47 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { TestDetail } from '../types';
+import { TestDetail, TestClientInfo, isRealTestCase } from '../types';
 import { format, isValid } from 'date-fns';
 import { useTheme } from '../contexts/useTheme';
 import DOMPurify from 'dompurify';
 import LogExcerpt from './LogExcerpt';
+import { logViewerUrl } from '../utils/urls';
+
+// Link to a client's log, anchored on the test's byte range when the
+// client was shared across tests (logOffsets present).
+const ClientLogLink: React.FC<{
+  client?: TestClientInfo;
+  discoveryName: string;
+  suiteid: string;
+  isDarkMode: boolean;
+}> = ({ client, discoveryName, suiteid, isDarkMode }) => {
+  if (!client?.logFile) return null;
+  return (
+    <Link
+      to={logViewerUrl(discoveryName, suiteid, client.logFile, client.logOffsets)}
+      title={client.logOffsets ? 'Client log, positioned at this test’s section' : 'Client log'}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        color: '#6366f1',
+        backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
+        padding: '0.35rem 0.75rem',
+        borderRadius: '0.375rem',
+        fontSize: '0.75rem',
+        fontWeight: '500',
+        display: 'inline-flex',
+        alignItems: 'center',
+        textDecoration: 'none'
+      }}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '0.875rem', height: '0.875rem', marginRight: '0.25rem' }}>
+        <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+        <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+      </svg>
+      Logs
+    </Link>
+  );
+};
 
 interface TestDetailsTableProps {
   testDetail: TestDetail & {
@@ -42,10 +79,11 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
   const expandedTestId = propExpandedTestId !== undefined ? propExpandedTestId : localExpandedTestId;
   const setExpandedTestId = propSetExpandedTestId || setLocalExpandedTestId;
 
-  // Filter test cases by search term
+  // Show real test cases matching the search term.
   const filteredTestCases = testDetail ? Object.entries(testDetail.testCases)
     .filter(([, testCase]) =>
-      searchTerm ? testCase.name.toLowerCase().includes(searchTerm.toLowerCase()) : true
+      isRealTestCase(testCase) &&
+      (searchTerm ? testCase.name.toLowerCase().includes(searchTerm.toLowerCase()) : true)
     ) : [];
 
   // Sort test cases - failed tests first
@@ -437,6 +475,22 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     color: isDarkMode ? '#94a3b8' : '#64748b' // Dark or light muted text
   };
 
+  // Section heading and excerpt wrapper styles for the expanded row
+  const sectionHeadingStyle: React.CSSProperties = {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    marginTop: '1.5rem',
+    marginBottom: '0.75rem',
+    paddingBottom: '0.5rem',
+    borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}`
+  };
+  const excerptWrapperStyle: React.CSSProperties = {
+    width: '100%',
+    maxWidth: '100%',
+    overflowX: 'auto',
+    boxSizing: 'border-box'
+  };
+
   // Pagination button style
   const paginationButtonStyle = (isActive: boolean): React.CSSProperties => ({
     backgroundColor: isActive
@@ -725,30 +779,12 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                       </div>
                     </td>
                     <td style={tableCellStyle} onClick={(e) => e.stopPropagation()}>
-                      {testCase.clientInfo && Object.values(testCase.clientInfo)[0]?.logFile && (
-                        <Link
-                          to={`/logs/${discoveryName}/${suiteid || ''}/${encodeURIComponent(Object.values(testCase.clientInfo)[0]?.logFile || '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        style={{
-                          color: '#6366f1',
-                          backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
-                          padding: '0.35rem 0.75rem',
-                          borderRadius: '0.375rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '0.875rem', height: '0.875rem', marginRight: '0.25rem' }}>
-                          <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                          <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                        </svg>
-                        Logs
-                        </Link>
-                      )}
+                      <ClientLogLink
+                        client={testCase.clientInfo ? Object.values(testCase.clientInfo)[0] : undefined}
+                        discoveryName={discoveryName}
+                        suiteid={suiteid}
+                        isDarkMode={isDarkMode}
+                      />
                     </td>
                   </tr>
 
@@ -786,13 +822,8 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                               {/* Log excerpt section */}
                               {testCase.summaryResult.log && testDetail.testDetailsLog && (
                                 <>
-                                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Log Excerpt</h4>
-                                  <div style={{
-                                    width: '100%',
-                                    maxWidth: '100%',
-                                    overflowX: 'auto',
-                                    boxSizing: 'border-box'
-                                  }}>
+                                  <h4 style={sectionHeadingStyle}>Test Log</h4>
+                                  <div style={excerptWrapperStyle}>
                                     <LogExcerpt
                                       discoveryName={discoveryName}
                                       logFile={testDetail.testDetailsLog}
@@ -804,12 +835,40 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                                   </div>
                                 </>
                               )}
-                              <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Description</h4>
+                              {testCase.clientInfo && Object.values(testCase.clientInfo)
+                                .filter((client) => client.logFile && client.logOffsets)
+                                .map((client) => (
+                                  <React.Fragment key={client.id}>
+                                    <h4 style={sectionHeadingStyle}>
+                                      Client Log — {client.name}
+                                      <span style={{ fontWeight: '400', fontFamily: 'monospace', fontSize: '0.75rem', marginLeft: '0.5rem', ...lightTextStyle }}>
+                                        {client.id}
+                                      </span>
+                                    </h4>
+                                    {client.logOffsets!.end > client.logOffsets!.begin ? (
+                                      <div style={excerptWrapperStyle}>
+                                        <LogExcerpt
+                                          discoveryName={discoveryName}
+                                          logFile={client.logFile}
+                                          beginByte={client.logOffsets!.begin}
+                                          endByte={client.logOffsets!.end}
+                                          isDarkMode={isDarkMode}
+                                          suiteid={suiteid}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div style={{ ...lightTextStyle, fontSize: '0.75rem' }}>
+                                        No client output was recorded during this test.
+                                      </div>
+                                    )}
+                                  </React.Fragment>
+                                ))}
+                              <h4 style={{ ...sectionHeadingStyle, marginTop: 0 }}>Description</h4>
                               <div style={{ ...lightTextStyle, fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', overflow: 'auto', wordBreak: 'break-word' }}>
                                 {sanitizeAndRenderHTML(testCase.description)}
                               </div>
 
-                              <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${isDarkMode ? 'rgba(71, 85, 105, 0.5)' : 'rgba(226, 232, 240, 1)'}` }}>Timing</h4>
+                              <h4 style={sectionHeadingStyle}>Timing</h4>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
                                 <div>
                                   <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>START TIME</div>
