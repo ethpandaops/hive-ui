@@ -29,6 +29,24 @@ export const fetchTestRuns = async (directory: Directory): Promise<TestRun[]> =>
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 };
 
+// Extract the EEST fixtures release of a run (e.g. "glamsterdam-devnet@v8.0.0")
+// from the suite JSON's runMetadata.hiveCommand. Suite files are ~16MB, but
+// runMetadata sits at the head of the file, so only the first 8KB is fetched
+// via a Range request (single byte ranges are CORS-safelisted, no preflight).
+export const fetchFixtureVersion = async (discoveryAddr: string, fileName: string): Promise<string | null> => {
+  const response = await fetch(`${discoveryAddr}/results/${fileName}`, {
+    headers: { Range: 'bytes=0-8191' },
+  });
+  // Only accept partial content; a 200 here would mean the server ignored the
+  // Range header and response.text() would pull the entire multi-MB file.
+  if (response.status !== 206) return null;
+  const text = await response.text();
+  const fixturesUrl = text.match(/"fixtures=([^"]+)"/)?.[1];
+  const releaseTag = fixturesUrl?.match(/\/download\/([^/]+)\//)?.[1];
+  if (!releaseTag) return null;
+  return decodeURIComponent(releaseTag).replace(/^tests-/, '');
+};
+
 export const fetchTestDetail = async (discoveryAddr: string, fileName: string): Promise<TestDetail> => {
   const response = await fetch(`${discoveryAddr}/results/${fileName}`);
   if (!response.ok) {

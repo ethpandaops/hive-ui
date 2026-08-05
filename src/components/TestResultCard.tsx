@@ -3,7 +3,7 @@ import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTestRuns } from '../services/api';
+import { fetchTestRuns, fetchFixtureVersion } from '../services/api';
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 
@@ -311,6 +311,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                       <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
                         {format(new Date(pastRun.start), 'MMM d, yyyy HH:mm:ss')}
                       </div>
+                      <FixtureVersionRow address={directoryAddress} fileName={pastRun.fileName} />
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ color: 'var(--success-text, #047857)' }}>Passed:</span>
@@ -403,6 +404,36 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
     </Link>
   );
 }
+
+// Shows which EEST fixtures release a run used (e.g. glamsterdam-devnet@v8.0.0).
+// Rendered inside Popover.Content, which Radix only mounts while the popover is
+// open, so the suite JSON head is fetched lazily on first hover and then cached.
+const FixtureVersionRow = ({ address, fileName }: { address: string; fileName: string }) => {
+  const { data: version } = useQuery({
+    queryKey: ['fixtureVersion', address, fileName],
+    queryFn: () => fetchFixtureVersion(address, fileName),
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  if (!version) return null;
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '0.5rem',
+      marginTop: '-0.25rem',
+      marginBottom: '0.5rem',
+      color: 'var(--text-secondary, #6b7280)'
+    }}>
+      <span>Fixtures:</span>
+      <span style={{ fontWeight: '500', textAlign: 'right', wordBreak: 'break-all' }}>
+        {version}
+      </span>
+    </div>
+  );
+};
 
 // Helper function to format date
 const formatDate = (timestamp: string) => {
