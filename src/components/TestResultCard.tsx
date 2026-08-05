@@ -291,7 +291,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                         minWidth: '200px',
                         fontSize: '0.75rem',
                         color: 'var(--text-primary, #111827)',
-                        maxWidth: '250px'
+                        maxWidth: '300px'
                       }}
                       onInteractOutside={(e: Event) => {
                         // Prevent closing when clicking on the card elements
@@ -311,7 +311,6 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                       <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
                         {format(new Date(pastRun.start), 'MMM d, yyyy HH:mm:ss')}
                       </div>
-                      <FixtureVersionRow address={directoryAddress} fileName={pastRun.fileName} />
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ color: 'var(--success-text, #047857)' }}>Passed:</span>
@@ -328,6 +327,9 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                           </span>
                         </div>
                       </div>
+                      {isEestRun(pastRun.name) && (
+                        <EestFixturesRow address={directoryAddress} fileName={pastRun.fileName} />
+                      )}
                       <Popover.Arrow
                         style={{
                           fill: 'var(--card-bg, #ffffff)',
@@ -405,10 +407,14 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
   );
 }
 
+// Only EEST simulators (eest/eels consume-* suites) run against a fixtures
+// release, so the fixtures row is limited to them.
+const isEestRun = (name: string) => /(^|\/)(eest|eels)\//.test(name);
+
 // Shows which EEST fixtures release a run used (e.g. glamsterdam-devnet@v8.0.0).
 // Rendered inside Popover.Content, which Radix only mounts while the popover is
 // open, so the suite JSON head is fetched lazily on first hover and then cached.
-const FixtureVersionRow = ({ address, fileName }: { address: string; fileName: string }) => {
+const EestFixturesRow = ({ address, fileName }: { address: string; fileName: string }) => {
   const { data: version } = useQuery({
     queryKey: ['fixtureVersion', address, fileName],
     queryFn: () => fetchFixtureVersion(address, fileName),
@@ -423,12 +429,13 @@ const FixtureVersionRow = ({ address, fileName }: { address: string; fileName: s
       display: 'flex',
       justifyContent: 'space-between',
       gap: '0.5rem',
-      marginTop: '-0.25rem',
-      marginBottom: '0.5rem',
+      borderTop: '1px solid var(--border-color, rgba(229, 231, 235, 0.4))',
+      paddingTop: '0.5rem',
+      marginTop: '0.5rem',
       color: 'var(--text-secondary, #6b7280)'
     }}>
-      <span>Fixtures:</span>
-      <span style={{ fontWeight: '500', textAlign: 'right', wordBreak: 'break-all' }}>
+      <span style={{ whiteSpace: 'nowrap' }}>EEST fixtures:</span>
+      <span style={{ fontWeight: '500', textAlign: 'right', wordBreak: 'break-word' }}>
         {version}
       </span>
     </div>
