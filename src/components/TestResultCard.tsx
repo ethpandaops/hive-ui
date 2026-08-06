@@ -3,7 +3,7 @@ import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTestRuns } from '../services/api';
+import { fetchTestRuns, fetchFixtureVersion } from '../services/api';
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 
@@ -291,7 +291,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                         minWidth: '200px',
                         fontSize: '0.75rem',
                         color: 'var(--text-primary, #111827)',
-                        maxWidth: '250px'
+                        maxWidth: '300px'
                       }}
                       onInteractOutside={(e: Event) => {
                         // Prevent closing when clicking on the card elements
@@ -327,6 +327,9 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                           </span>
                         </div>
                       </div>
+                      {isEestRun(pastRun.name) && (
+                        <EestFixturesRow address={directoryAddress} fileName={pastRun.fileName} />
+                      )}
                       <Popover.Arrow
                         style={{
                           fill: 'var(--card-bg, #ffffff)',
@@ -403,6 +406,41 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
     </Link>
   );
 }
+
+// Only EEST simulators (eest/eels consume-* suites) run against a fixtures
+// release, so the fixtures row is limited to them.
+const isEestRun = (name: string) => /(^|\/)(eest|eels)\//.test(name);
+
+// Shows which EEST fixtures release a run used (e.g. glamsterdam-devnet@v8.0.0).
+// Rendered inside Popover.Content, which Radix only mounts while the popover is
+// open, so the suite JSON head is fetched lazily on first hover and then cached.
+const EestFixturesRow = ({ address, fileName }: { address: string; fileName: string }) => {
+  const { data: version } = useQuery({
+    queryKey: ['fixtureVersion', address, fileName],
+    queryFn: () => fetchFixtureVersion(address, fileName),
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  if (!version) return null;
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '0.5rem',
+      borderTop: '1px solid var(--border-color, rgba(229, 231, 235, 0.4))',
+      paddingTop: '0.5rem',
+      marginTop: '0.5rem',
+      color: 'var(--text-secondary, #6b7280)'
+    }}>
+      <span style={{ whiteSpace: 'nowrap' }}>EEST fixtures:</span>
+      <span style={{ fontWeight: '500', textAlign: 'right', wordBreak: 'break-word' }}>
+        {version}
+      </span>
+    </div>
+  );
+};
 
 // Helper function to format date
 const formatDate = (timestamp: string) => {
