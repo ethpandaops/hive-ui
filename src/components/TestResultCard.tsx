@@ -453,12 +453,16 @@ const EelsReleaseTag = ({ address, fileName }: { address: string; fileName: stri
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-      <span style={{ marginRight: '0.25rem' }}>🏷️</span>
+      <span style={{ marginRight: '0.25rem' }}>
+        {release.kind === 'branch' ? '🌿' : '🏷️'}
+      </span>
       <a
         href={release.releaseUrl}
         target="_blank"
         rel="noopener noreferrer"
-        title={`EELS fixtures release: ${release.version}`}
+        title={release.kind === 'branch'
+          ? `EELS branch: ${release.version}`
+          : `EELS fixtures release: ${release.version}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           color: 'inherit',
@@ -501,7 +505,9 @@ const EelsFixturesRow = ({ address, fileName }: { address: string; fileName: str
       marginTop: '0.5rem',
       color: 'var(--text-secondary, #6b7280)'
     }}>
-      <span style={{ whiteSpace: 'nowrap' }}>EELS fixtures:</span>
+      <span style={{ whiteSpace: 'nowrap' }}>
+        {release.kind === 'branch' ? 'EELS branch:' : 'EELS fixtures:'}
+      </span>
       <a
         href={release.releaseUrl}
         target="_blank"
