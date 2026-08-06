@@ -3,7 +3,7 @@ import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTestRuns, fetchFixtureVersion } from '../services/api';
+import { fetchTestRuns, fetchFixtureRelease } from '../services/api';
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 
@@ -327,8 +327,8 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                           </span>
                         </div>
                       </div>
-                      {isEestRun(pastRun.name) && (
-                        <EestFixturesRow address={directoryAddress} fileName={pastRun.fileName} />
+                      {isEelsRun(pastRun.name) && (
+                        <EelsFixturesRow address={directoryAddress} fileName={pastRun.fileName} />
                       )}
                       <Popover.Arrow
                         style={{
@@ -389,7 +389,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
           )}
         </div>
 
-        {/* Date */}
+        {/* Date + fixtures release */}
         <div style={{
           marginTop: 'auto',
           paddingTop: '0.25rem',
@@ -397,32 +397,80 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
           fontSize: '0.7rem',
           color: 'var(--text-secondary, #6b7280)',
           display: 'flex',
-          alignItems: 'center'
+          flexDirection: 'column',
+          gap: '0.2rem'
         }}>
-          <span style={{ marginRight: '0.25rem' }}>🕒</span>
-          {formatDate(run.start)}
+          <div style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+            <span style={{ marginRight: '0.25rem' }}>🕒</span>
+            {formatDate(run.start)}
+          </div>
+          {isEelsRun(run.name) && (
+            <EelsReleaseTag address={directoryAddress} fileName={run.fileName} />
+          )}
         </div>
       </div>
     </Link>
   );
 }
 
-// Only EEST simulators (eest/eels consume-* suites) run against a fixtures
-// release, so the fixtures row is limited to them.
-const isEestRun = (name: string) => /(^|\/)(eest|eels)\//.test(name);
+// Only EELS-based simulators (eels/consume-* suites) run against an EELS
+// (execution-specs) fixtures release, so the tag is limited to them.
+const isEelsRun = (name: string) => /(^|\/)eels\//.test(name);
 
-// Shows which EEST fixtures release a run used (e.g. glamsterdam-devnet@v8.0.0).
-// Rendered inside Popover.Content, which Radix only mounts while the popover is
-// open, so the suite JSON head is fetched lazily on first hover and then cached.
-const EestFixturesRow = ({ address, fileName }: { address: string; fileName: string }) => {
-  const { data: version } = useQuery({
-    queryKey: ['fixtureVersion', address, fileName],
-    queryFn: () => fetchFixtureVersion(address, fileName),
+// Shows the EELS fixtures release a run used (e.g. glamsterdam-devnet@v8.1.0)
+// in the card footer, under the run date, linked to the GitHub release page.
+// The release tag lives in the suite JSON's runMetadata, fetched lazily via
+// a Range request and cached. The link stops propagation so clicking it opens
+// the release instead of following the card's suite link.
+const EelsReleaseTag = ({ address, fileName }: { address: string; fileName: string }) => {
+  const { data: release } = useQuery({
+    queryKey: ['fixtureRelease', address, fileName],
+    queryFn: () => fetchFixtureRelease(address, fileName),
     staleTime: Infinity,
     retry: false,
   });
 
-  if (!version) return null;
+  if (!release) return null;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+      <span style={{ marginRight: '0.25rem' }}>🏷️</span>
+      <a
+        href={release.releaseUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`EELS fixtures release: ${release.version}`}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          color: 'inherit',
+          fontWeight: '500',
+          textDecoration: 'none',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}
+        onMouseOver={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+        onMouseOut={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+      >
+        {release.version}
+      </a>
+    </div>
+  );
+};
+
+// Shows the EELS fixtures release inside a past-run hover popover. Rendered
+// inside Popover.Content, which Radix only mounts while the popover is open,
+// so the suite JSON head is fetched lazily on first hover and then cached
+// (same query key as the footer tag, so hovering costs no extra fetch).
+const EelsFixturesRow = ({ address, fileName }: { address: string; fileName: string }) => {
+  const { data: release } = useQuery({
+    queryKey: ['fixtureRelease', address, fileName],
+    queryFn: () => fetchFixtureRelease(address, fileName),
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  if (!release) return null;
 
   return (
     <div style={{
@@ -434,10 +482,23 @@ const EestFixturesRow = ({ address, fileName }: { address: string; fileName: str
       marginTop: '0.5rem',
       color: 'var(--text-secondary, #6b7280)'
     }}>
-      <span style={{ whiteSpace: 'nowrap' }}>EEST fixtures:</span>
-      <span style={{ fontWeight: '500', textAlign: 'right', wordBreak: 'break-word' }}>
-        {version}
-      </span>
+      <span style={{ whiteSpace: 'nowrap' }}>EELS fixtures:</span>
+      <a
+        href={release.releaseUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: 'inherit',
+          fontWeight: '500',
+          textAlign: 'right',
+          wordBreak: 'break-word',
+          textDecoration: 'none'
+        }}
+        onMouseOver={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+        onMouseOut={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+      >
+        {release.version}
+      </a>
     </div>
   );
 };
