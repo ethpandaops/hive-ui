@@ -2,7 +2,7 @@ import { format, isValid } from 'date-fns';
 import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTestRuns, fetchFixtureRelease } from '../services/api';
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
@@ -37,9 +37,28 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
   // Get past 10 runs for this test/client combination
   const pastRuns = getPastRuns(allTestRuns || [], run, 13);
 
+  const queryClient = useQueryClient();
+
+  // Warm the fixture-release cache for every past run as soon as the pointer
+  // enters the card, so the hover popovers can render their EELS fixtures row
+  // immediately instead of waiting a round-trip per bar. prefetchQuery is a
+  // no-op for entries that are already cached or in flight.
+  const prefetchFixtureReleases = () => {
+    if (!isEelsRun(run.name)) return;
+    for (const pastRun of pastRuns) {
+      queryClient.prefetchQuery({
+        queryKey: ['fixtureRelease', directoryAddress, pastRun.fileName],
+        queryFn: () => fetchFixtureRelease(directoryAddress, pastRun.fileName),
+        staleTime: Infinity,
+        retry: false,
+      });
+    }
+  };
+
   return (
     <Link
       to={`/test/${directory}/${suiteid}`}
+      onMouseEnter={prefetchFixtureReleases}
       style={{
         backgroundColor: statusStyles.bg,
         borderRadius: '0.375rem',
