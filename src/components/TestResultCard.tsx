@@ -2,7 +2,7 @@ import { format, isValid } from 'date-fns';
 import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTestRuns, fetchFixtureRelease } from '../services/api';
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
@@ -37,9 +37,28 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
   // Get past 10 runs for this test/client combination
   const pastRuns = getPastRuns(allTestRuns || [], run, 13);
 
+  const queryClient = useQueryClient();
+
+  // Warm the fixture-release cache for every past run as soon as the pointer
+  // enters the card, so the hover popovers can render their EELS fixtures row
+  // immediately instead of waiting a round-trip per bar. prefetchQuery is a
+  // no-op for entries that are already cached or in flight.
+  const prefetchFixtureReleases = () => {
+    if (!isEelsRun(run.name)) return;
+    for (const pastRun of pastRuns) {
+      queryClient.prefetchQuery({
+        queryKey: ['fixtureRelease', directoryAddress, pastRun.fileName],
+        queryFn: () => fetchFixtureRelease(directoryAddress, pastRun.fileName),
+        staleTime: Infinity,
+        retry: false,
+      });
+    }
+  };
+
   return (
     <Link
       to={`/test/${directory}/${suiteid}`}
+      onMouseEnter={prefetchFixtureReleases}
       style={{
         backgroundColor: statusStyles.bg,
         borderRadius: '0.375rem',
@@ -434,12 +453,16 @@ const EelsReleaseTag = ({ address, fileName }: { address: string; fileName: stri
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-      <span style={{ marginRight: '0.25rem' }}>🏷️</span>
+      <span style={{ marginRight: '0.25rem' }}>
+        {release.kind === 'branch' ? '🌿' : '🏷️'}
+      </span>
       <a
         href={release.releaseUrl}
         target="_blank"
         rel="noopener noreferrer"
-        title={`EELS fixtures release: ${release.version}`}
+        title={release.kind === 'branch'
+          ? `EELS branch: ${release.version}`
+          : `EELS fixtures release: ${release.version}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           color: 'inherit',
@@ -482,7 +505,9 @@ const EelsFixturesRow = ({ address, fileName }: { address: string; fileName: str
       marginTop: '0.5rem',
       color: 'var(--text-secondary, #6b7280)'
     }}>
-      <span style={{ whiteSpace: 'nowrap' }}>EELS fixtures:</span>
+      <span style={{ whiteSpace: 'nowrap' }}>
+        {release.kind === 'branch' ? 'EELS branch:' : 'EELS fixtures:'}
+      </span>
       <a
         href={release.releaseUrl}
         target="_blank"

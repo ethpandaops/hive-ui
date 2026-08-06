@@ -32,13 +32,18 @@ export const fetchTestRuns = async (directory: Directory): Promise<TestRun[]> =>
 export interface FixtureRelease {
   version: string;
   releaseUrl: string;
+  // Execute-mode sims build from an EELS branch instead of consuming a
+  // fixtures release; version/releaseUrl then point at the branch.
+  kind: 'release' | 'branch';
 }
 
-// Extract the fixtures release a run used (e.g. "glamsterdam-devnet@v8.0.0"
-// and its GitHub release page) from the suite JSON's runMetadata.hiveCommand.
-// Suite files are ~16MB, but runMetadata sits at the head of the file, so
-// only the first 8KB is fetched via a Range request (single byte ranges are
-// CORS-safelisted, no preflight).
+// Extract the EELS source a run used from the suite JSON's
+// runMetadata.hiveCommand: the fixtures release (e.g.
+// "glamsterdam-devnet@v8.0.0" and its GitHub release page) for consume
+// sims, or the EELS branch for execute sims. Suite files are ~16MB, but
+// runMetadata sits at the head of the file, so only the first 8KB is
+// fetched via a Range request (single byte ranges are CORS-safelisted,
+// no preflight).
 export const fetchFixtureRelease = async (discoveryAddr: string, fileName: string): Promise<FixtureRelease | null> => {
   const response = await fetch(`${discoveryAddr}/results/${fileName}`, {
     headers: { Range: 'bytes=0-8191' },
@@ -49,10 +54,19 @@ export const fetchFixtureRelease = async (discoveryAddr: string, fileName: strin
   const text = await response.text();
   const fixturesUrl = text.match(/"fixtures=([^"]+)"/)?.[1];
   const match = fixturesUrl?.match(/^(https:\/\/github\.com\/[^/]+\/[^/]+)\/releases\/download\/([^/]+)\//);
-  if (!match) return null;
+  if (match) {
+    return {
+      version: decodeURIComponent(match[2]).replace(/^tests-/, ''),
+      releaseUrl: `${match[1]}/releases/tag/${match[2]}`,
+      kind: 'release',
+    };
+  }
+  const branch = text.match(/"branch=([^"]+)"/)?.[1];
+  if (!branch) return null;
   return {
-    version: decodeURIComponent(match[2]).replace(/^tests-/, ''),
-    releaseUrl: `${match[1]}/releases/tag/${match[2]}`,
+    version: branch,
+    releaseUrl: `https://github.com/ethereum/execution-specs/tree/${branch}`,
+    kind: 'branch',
   };
 };
 
