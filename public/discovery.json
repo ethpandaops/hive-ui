@@ -33,5 +33,19 @@
     "github_workflows": [
       "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-frames-devnet-0-quick.yaml"
     ]
+  },
+  {
+    "name": "focil",
+    "address": "https://hive.ethpandaops.io/focil/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-focil-devnet-0.yaml"
+    ]
+  },
+  {
+    "name": "focil-quick",
+    "address": "https://hive.ethpandaops.io/focil-quick/",
+    "github_workflows": [
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-focil-devnet-0-quick.yaml"
+    ]
   }
 ]
