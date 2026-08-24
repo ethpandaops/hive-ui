@@ -225,16 +225,11 @@ const GroupDetail = () => {
   // Find the specific directory and fetch its test runs
   const directory = directories?.find(dir => dir.name === name);
 
-  const { data: testRuns = [], isLoading: isLoadingRuns } = useQuery({
+  const { data: testRuns = [], isLoading: isLoadingRuns, isError: isRunsError, refetch: refetchRuns } = useQuery({
     queryKey: ['testRuns', name],
     queryFn: async () => {
       if (!directory) return [];
-      try {
-        return await fetchTestRuns(directory);
-      } catch (error) {
-        console.error(`Failed to fetch test runs for directory ${name}:`, error);
-        return [];
-      }
+      return fetchTestRuns(directory);
     },
     enabled: !!directory,
   });
@@ -261,6 +256,33 @@ const GroupDetail = () => {
             height: '2.5rem',
             animation: 'spin 1s linear infinite'
           }}></div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (isRunsError) {
+    return (
+      <div style={containerStyle}>
+        <Header />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', flex: 1 }}>
+          <div className="text-center">
+            <div style={{ fontSize: '4rem', color: '#9ca3af' }}>⚠️</div>
+            <div style={{ color: '#6b7280', fontSize: '1.125rem', marginBottom: '1rem' }}>Failed to load test runs for "{name}"</div>
+            <button
+              onClick={() => refetchRuns()}
+              style={{
+                color: '#3b82f6',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '0.875rem'
+              }}
+            >
+              ↻ Retry
+            </button>
+          </div>
         </div>
         <Footer />
       </div>

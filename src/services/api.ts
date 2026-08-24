@@ -25,7 +25,16 @@ export const fetchTestRuns = async (directory: Directory): Promise<TestRun[]> =>
   return text
     .split('\n')
     .filter(Boolean)
-    .map(line => JSON.parse(line))
+    .flatMap(line => {
+      // The listing is regenerated in S3 as test jobs finish; skip a line
+      // caught mid-rewrite instead of dropping the whole directory.
+      try {
+        return [JSON.parse(line)];
+      } catch {
+        console.warn(`Skipping malformed listing line in ${directory.name}`);
+        return [];
+      }
+    })
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 };
 
