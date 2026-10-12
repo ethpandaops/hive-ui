@@ -2,6 +2,7 @@ export interface Directory {
   name: string;
   address: string;
   github_workflows?: string[];
+  hidden?: boolean;
 }
 
 export interface TestRun {

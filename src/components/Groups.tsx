@@ -34,6 +34,8 @@ const Groups = () => {
   const { data: directories, isLoading: isLoadingDirs } = useQuery<Directory[]>({
     queryKey: ['directories'],
     queryFn: fetchDirectories,
+    // Hidden groups stay reachable by direct link but are not listed
+    select: dirs => dirs.filter(dir => !dir.hidden),
   });
 
   // Store directory addresses
