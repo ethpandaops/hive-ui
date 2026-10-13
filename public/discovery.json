@@ -47,37 +47,5 @@
     "github_workflows": [
       "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-heze-quick.yaml"
     ]
-  },
-  {
-    "name": "frames",
-    "address": "https://hive.ethpandaops.io/frames/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-frames.yaml"
-    ],
-    "hidden": true
-  },
-  {
-    "name": "frames-quick",
-    "address": "https://hive.ethpandaops.io/frames-quick/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-frames-quick.yaml"
-    ],
-    "hidden": true
-  },
-  {
-    "name": "focil",
-    "address": "https://hive.ethpandaops.io/focil/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-focil.yaml"
-    ],
-    "hidden": true
-  },
-  {
-    "name": "focil-quick",
-    "address": "https://hive.ethpandaops.io/focil-quick/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-focil-quick.yaml"
-    ],
-    "hidden": true
   }
 ]
