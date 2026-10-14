@@ -3,8 +3,9 @@ import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchTestRuns, fetchFixtureRelease } from '../services/api';
-import { useState } from 'react';
+import { fetchTestRuns, fetchSuiteHead, ClientSource } from '../services/api';
+import { extractCommitHash } from '../utils/clientVersion';
+import { useState, ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 
 type GroupBy = 'test' | 'client';
@@ -39,16 +40,16 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
 
   const queryClient = useQueryClient();
 
-  // Warm the fixture-release cache for every past run as soon as the pointer
+  // Warm the suite-head cache for every past run as soon as the pointer
   // enters the card, so the hover popovers can render their EELS fixtures row
   // immediately instead of waiting a round-trip per bar. prefetchQuery is a
   // no-op for entries that are already cached or in flight.
-  const prefetchFixtureReleases = () => {
+  const prefetchSuiteHeads = () => {
     if (!isEelsRun(run.name)) return;
     for (const pastRun of pastRuns) {
       queryClient.prefetchQuery({
-        queryKey: ['fixtureRelease', directoryAddress, pastRun.fileName],
-        queryFn: () => fetchFixtureRelease(directoryAddress, pastRun.fileName),
+        queryKey: ['suiteHead', directoryAddress, pastRun.fileName],
+        queryFn: () => fetchSuiteHead(directoryAddress, pastRun.fileName),
         staleTime: Infinity,
         retry: false,
       });
@@ -58,7 +59,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
   return (
     <Link
       to={`/test/${directory}/${suiteid}`}
-      onMouseEnter={prefetchFixtureReleases}
+      onMouseEnter={prefetchSuiteHeads}
       style={{
         backgroundColor: statusStyles.bg,
         borderRadius: '0.375rem',
@@ -349,6 +350,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                       {isEelsRun(pastRun.name) && (
                         <EelsFixturesRow address={directoryAddress} fileName={pastRun.fileName} />
                       )}
+                      <ClientCommitRows run={pastRun} />
                       <Popover.Arrow
                         style={{
                           fill: 'var(--card-bg, #ffffff)',
@@ -426,6 +428,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
           {isEelsRun(run.name) && (
             <EelsReleaseTag address={directoryAddress} fileName={run.fileName} />
           )}
+          <ClientSourceTags run={run} address={directoryAddress} />
         </div>
       </div>
     </Link>
@@ -436,18 +439,24 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
 // (execution-specs) fixtures release, so the tag is limited to them.
 const isEelsRun = (name: string) => /(^|\/)eels\//.test(name);
 
+// The head of a suite JSON (runMetadata: EELS fixtures + client build
+// sources), fetched lazily via a Range request and cached forever, since a
+// finished run's metadata never changes. Shared by the footer tags and the
+// past-run popovers, so a card costs at most one head fetch per run.
+const useSuiteHead = (address: string, fileName: string) => useQuery({
+  queryKey: ['suiteHead', address, fileName],
+  queryFn: () => fetchSuiteHead(address, fileName),
+  staleTime: Infinity,
+  retry: false,
+});
+
 // Shows the EELS fixtures release a run used (e.g. glamsterdam-devnet@v8.1.0)
 // in the card footer, under the run date, linked to the GitHub release page.
-// The release tag lives in the suite JSON's runMetadata, fetched lazily via
-// a Range request and cached. The link stops propagation so clicking it opens
-// the release instead of following the card's suite link.
+// The link stops propagation so clicking it opens the release instead of
+// following the card's suite link.
 const EelsReleaseTag = ({ address, fileName }: { address: string; fileName: string }) => {
-  const { data: release } = useQuery({
-    queryKey: ['fixtureRelease', address, fileName],
-    queryFn: () => fetchFixtureRelease(address, fileName),
-    staleTime: Infinity,
-    retry: false,
-  });
+  const { data: head } = useSuiteHead(address, fileName);
+  const release = head?.fixtureRelease;
 
   if (!release) return null;
 
@@ -486,12 +495,8 @@ const EelsReleaseTag = ({ address, fileName }: { address: string; fileName: stri
 // so the suite JSON head is fetched lazily on first hover and then cached
 // (same query key as the footer tag, so hovering costs no extra fetch).
 const EelsFixturesRow = ({ address, fileName }: { address: string; fileName: string }) => {
-  const { data: release } = useQuery({
-    queryKey: ['fixtureRelease', address, fileName],
-    queryFn: () => fetchFixtureRelease(address, fileName),
-    staleTime: Infinity,
-    retry: false,
-  });
+  const { data: head } = useSuiteHead(address, fileName);
+  const release = head?.fixtureRelease;
 
   if (!release) return null;
 
@@ -525,6 +530,122 @@ const EelsFixturesRow = ({ address, fileName }: { address: string; fileName: str
         {release.version}
       </a>
     </div>
+  );
+};
+
+// Footer lines per client showing what was actually tested, one item per
+// line so each fits the card width without truncation:
+//   📦 hyperledger/besu           build source: repo (git) or image
+//   🏷️ glamsterdam-devnet-8       git ref / image tag
+//   🔗 eea3174                    commit hash, linked to GitHub when known
+//   🧾 besu/v26.8-develop-...     the version string the client reported
+// The hash and version come from listing.jsonl `versions` (the string the
+// client printed at startup), so they show immediately; source and ref
+// fill in once the suite head arrives. Images are always pulled fresh, so
+// the hash is what pins down which build a run exercised.
+const ClientSourceTags = ({ run, address }: { run: TestRun; address: string }) => {
+  const { data: head } = useSuiteHead(address, run.fileName);
+
+  return (
+    <>
+      {run.clients.map(client => {
+        // First line only: nimbus appends its --help text.
+        const version = run.versions?.[client]?.split('\n')[0].trim();
+        const hash = extractCommitHash(version);
+        const source = head?.clientSources?.[client];
+        const prefix = run.clients.length > 1 ? `${client}: ` : '';
+        return (
+          <div key={client} style={{ display: 'contents' }}>
+            {source && (
+              <FooterLine icon={source.kind === 'image' ? '🐳' : '📦'} title={`${prefix}${source.kind === 'image' ? 'Image' : 'Repo'}: ${source.origin}`}>
+                {source.origin}
+              </FooterLine>
+            )}
+            {source?.ref && (
+              <FooterLine icon="🏷️" title={`${prefix}${source.kind === 'image' ? 'Tag' : 'Ref'}: ${source.ref}`}>
+                {source.ref}
+              </FooterLine>
+            )}
+            {hash && (
+              <FooterLine icon="🔗" title={`${prefix}Commit: ${hash}`}>
+                <CommitHashLink hash={hash} source={source} />
+              </FooterLine>
+            )}
+            {version && (
+              <FooterLine icon="🧾" title={`${prefix}Reported version: ${version}`} mono>
+                {version}
+              </FooterLine>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
+// A single icon + text footer row; text ellipsizes to the card width with
+// the full value in the tooltip.
+const FooterLine = ({ icon, title, mono, children }: { icon: string; title: string; mono?: boolean; children: ReactNode }) => (
+  <div title={title} style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', minWidth: 0 }}>
+    <span style={{ marginRight: '0.25rem' }}>{icon}</span>
+    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, fontFamily: mono ? 'monospace' : undefined }}>
+      {children}
+    </span>
+  </div>
+);
+
+// Rows in the past-run popover with each client's commit hash, so the run
+// history shows which build every past run exercised. Sources are not
+// shown here: the popover already fetches the head for the EELS row, and
+// the source rarely changes between consecutive runs, unlike the hash.
+const ClientCommitRows = ({ run }: { run: TestRun }) => {
+  const rows = run.clients
+    .map(client => ({ client, hash: extractCommitHash(run.versions?.[client]) }))
+    .filter(row => row.hash);
+  if (rows.length === 0) return null;
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.4rem',
+      borderTop: '1px solid var(--border-color, rgba(229, 231, 235, 0.4))',
+      paddingTop: '0.5rem',
+      marginTop: '0.5rem',
+      color: 'var(--text-secondary, #6b7280)'
+    }}>
+      {rows.map(({ client, hash }) => (
+        <div key={client} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <span style={{ whiteSpace: 'nowrap' }}>{client}:</span>
+          <span style={{ fontWeight: '500', fontFamily: 'monospace' }} title={run.versions?.[client]?.trim()}>
+            {hash}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// A short commit hash, linked to the commit on GitHub when the client was
+// built from a known repo. Stops propagation so the click opens the commit
+// instead of following the card's suite link.
+const CommitHashLink = ({ hash, source }: { hash: string | null; source?: ClientSource }) => {
+  if (!hash) return null;
+  if (!source?.github) {
+    return <span style={{ fontFamily: 'monospace' }}>{hash}</span>;
+  }
+  return (
+    <a
+      href={`https://github.com/${source.github}/commit/${hash}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      style={{ color: 'inherit', fontFamily: 'monospace', fontWeight: '500', textDecoration: 'none' }}
+      onMouseOver={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+      onMouseOut={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+    >
+      {hash}
+    </a>
   );
 };
 
