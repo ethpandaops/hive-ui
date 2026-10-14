@@ -21,31 +21,31 @@
     ]
   },
   {
-    "name": "frames",
-    "address": "https://hive.ethpandaops.io/frames/",
+    "name": "bogota",
+    "address": "https://hive.ethpandaops.io/bogota/",
     "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-frames.yaml"
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-bogota.yaml"
     ]
   },
   {
-    "name": "frames-quick",
-    "address": "https://hive.ethpandaops.io/frames-quick/",
+    "name": "bogota-quick",
+    "address": "https://hive.ethpandaops.io/bogota-quick/",
     "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-frames-quick.yaml"
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-bogota-quick.yaml"
     ]
   },
   {
-    "name": "focil",
-    "address": "https://hive.ethpandaops.io/focil/",
+    "name": "heze",
+    "address": "https://hive.ethpandaops.io/heze/",
     "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-focil.yaml"
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-heze.yaml"
     ]
   },
   {
-    "name": "focil-quick",
-    "address": "https://hive.ethpandaops.io/focil-quick/",
+    "name": "heze-quick",
+    "address": "https://hive.ethpandaops.io/heze-quick/",
     "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-focil-quick.yaml"
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-heze-quick.yaml"
     ]
   }
 ]
