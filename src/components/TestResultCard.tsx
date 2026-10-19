@@ -436,6 +436,14 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
 // (execution-specs) fixtures release, so the tag is limited to them.
 const isEelsRun = (name: string) => /(^|\/)eels\//.test(name);
 
+const RELEASE_ICON = { release: '🏷️', branch: '🌿', image: '🐳' } as const;
+const RELEASE_TITLE = {
+  release: 'EELS fixtures release',
+  branch: 'EELS branch',
+  image: 'EELS simulator image',
+} as const;
+const RELEASE_LABEL = { release: 'EELS fixtures:', branch: 'EELS branch:', image: 'EELS image:' } as const;
+
 // Shows the EELS fixtures release a run used (e.g. glamsterdam-devnet@v8.1.0)
 // in the card footer, under the run date, linked to the GitHub release page.
 // The release tag lives in the suite JSON's runMetadata, fetched lazily via
@@ -454,15 +462,13 @@ const EelsReleaseTag = ({ address, fileName }: { address: string; fileName: stri
   return (
     <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
       <span style={{ marginRight: '0.25rem' }}>
-        {release.kind === 'branch' ? '🌿' : '🏷️'}
+        {RELEASE_ICON[release.kind]}
       </span>
       <a
         href={release.releaseUrl}
         target="_blank"
         rel="noopener noreferrer"
-        title={release.kind === 'branch'
-          ? `EELS branch: ${release.version}`
-          : `EELS fixtures release: ${release.version}`}
+        title={`${RELEASE_TITLE[release.kind]}: ${release.version}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           color: 'inherit',
@@ -506,7 +512,7 @@ const EelsFixturesRow = ({ address, fileName }: { address: string; fileName: str
       color: 'var(--text-secondary, #6b7280)'
     }}>
       <span style={{ whiteSpace: 'nowrap' }}>
-        {release.kind === 'branch' ? 'EELS branch:' : 'EELS fixtures:'}
+        {RELEASE_LABEL[release.kind]}
       </span>
       <a
         href={release.releaseUrl}
