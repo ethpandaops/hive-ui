@@ -48,7 +48,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
     for (const pastRun of pastRuns) {
       queryClient.prefetchQuery({
         queryKey: ['fixtureRelease', directoryAddress, pastRun.fileName],
-        queryFn: () => fetchFixtureRelease(directoryAddress, pastRun.fileName),
+        queryFn: () => fetchFixtureRelease(directoryAddress, pastRun.fileName, pastRun.simLog),
         staleTime: Infinity,
         retry: false,
       });
@@ -347,7 +347,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                         </div>
                       </div>
                       {isEelsRun(pastRun.name) && (
-                        <EelsFixturesRow address={directoryAddress} fileName={pastRun.fileName} />
+                        <EelsFixturesRow address={directoryAddress} fileName={pastRun.fileName} simLog={pastRun.simLog} />
                       )}
                       <Popover.Arrow
                         style={{
@@ -424,7 +424,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
             {formatDate(run.start)}
           </div>
           {isEelsRun(run.name) && (
-            <EelsReleaseTag address={directoryAddress} fileName={run.fileName} />
+            <EelsReleaseTag address={directoryAddress} fileName={run.fileName} simLog={run.simLog} />
           )}
         </div>
       </div>
@@ -446,13 +446,13 @@ const RELEASE_LABEL = { release: 'EELS fixtures:', branch: 'EELS branch:', image
 
 // Shows the EELS fixtures release a run used (e.g. glamsterdam-devnet@v8.1.0)
 // in the card footer, under the run date, linked to the GitHub release page.
-// The release tag lives in the suite JSON's runMetadata, fetched lazily via
-// a Range request and cached. The link stops propagation so clicking it opens
-// the release instead of following the card's suite link.
-const EelsReleaseTag = ({ address, fileName }: { address: string; fileName: string }) => {
+// The release is read from the head of the simulator log or the suite JSON,
+// fetched lazily via Range requests and cached. The link stops propagation so
+// clicking it opens the release instead of following the card's suite link.
+const EelsReleaseTag = ({ address, fileName, simLog }: { address: string; fileName: string; simLog: string }) => {
   const { data: release } = useQuery({
     queryKey: ['fixtureRelease', address, fileName],
-    queryFn: () => fetchFixtureRelease(address, fileName),
+    queryFn: () => fetchFixtureRelease(address, fileName, simLog),
     staleTime: Infinity,
     retry: false,
   });
@@ -489,12 +489,12 @@ const EelsReleaseTag = ({ address, fileName }: { address: string; fileName: stri
 
 // Shows the EELS fixtures release inside a past-run hover popover. Rendered
 // inside Popover.Content, which Radix only mounts while the popover is open,
-// so the suite JSON head is fetched lazily on first hover and then cached
-// (same query key as the footer tag, so hovering costs no extra fetch).
-const EelsFixturesRow = ({ address, fileName }: { address: string; fileName: string }) => {
+// so the release is fetched lazily on first hover and then cached (same
+// query key as the footer tag, so hovering costs no extra fetch).
+const EelsFixturesRow = ({ address, fileName, simLog }: { address: string; fileName: string; simLog: string }) => {
   const { data: release } = useQuery({
     queryKey: ['fixtureRelease', address, fileName],
-    queryFn: () => fetchFixtureRelease(address, fileName),
+    queryFn: () => fetchFixtureRelease(address, fileName, simLog),
     staleTime: Infinity,
     retry: false,
   });

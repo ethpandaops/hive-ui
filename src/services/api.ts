@@ -76,22 +76,50 @@ const imageRelease = (tag: string, simulator: string | undefined): FixtureReleas
   };
 };
 
-// Extract the EELS source a run used from the suite JSON's
-// runMetadata.hiveCommand: the simulator image tag (`tag=`) of the
-// published images, or for runs that built from source the fixtures
-// release (e.g. "glamsterdam-devnet@v8.0.0" and its GitHub release page)
-// for consume sims, or the EELS branch for execute sims. Suite files are
-// ~16MB, but runMetadata sits at the head of the file, so only the first
-// 8KB is fetched via a Range request (single byte ranges are
-// CORS-safelisted, no preflight).
-export const fetchFixtureRelease = async (discoveryAddr: string, fileName: string): Promise<FixtureRelease | null> => {
-  const response = await fetch(`${discoveryAddr}/results/${fileName}`, {
-    headers: { Range: 'bytes=0-8191' },
-  });
-  // Only accept partial content; a 200 here would mean the server ignored the
-  // Range header and response.text() would pull the entire multi-MB file.
-  if (response.status !== 206) return null;
-  const text = await response.text();
+// Read the release an EELS simulator names in the pytest header at the top
+// of its log: `fixtures release:` for consume sims and `tests release:` for
+// execute sims, e.g. tests@v21.0.1 for the published images, or the release
+// page for fixtures downloaded by URL. Unlike the image tag, it names the
+// release behind a channel such as latest, and is logged whether the tag
+// came from --sim.buildarg or the hive config file.
+const loggedRelease = (log: string): FixtureRelease | null => {
+  const logged = log.match(/^(?:fixtures|tests) release: (\S+)/m)?.[1];
+  if (!logged) return null;
+  const page = logged.match(/^https:\/\/github\.com\/.+\/releases\/tag\/([^/]+)$/);
+  const tag = page ? decodeURIComponent(page[1]) : logged;
+  return {
+    version: tag.replace(/^tests-/, ''),
+    releaseUrl: page ? logged : tag.includes('@') ? `${EELS_REPO}/releases/tag/${tag}` : EELS_REPO,
+    kind: 'release',
+  };
+};
+
+// Fetch the first 8KB of a results file via a Range request (single byte
+// ranges are CORS-safelisted, no preflight). Only partial content is
+// accepted; a 200 would mean the server ignored the Range header and
+// response.text() would pull the entire multi-MB file.
+const fetchHead = async (url: string): Promise<string | null> => {
+  const response = await fetch(url, { headers: { Range: 'bytes=0-8191' } });
+  return response.status === 206 ? response.text() : null;
+};
+
+// Extract the EELS source a run used: the release logged in the simulator
+// log header, or failing that, the suite JSON's runMetadata.hiveCommand:
+// the simulator image tag (`tag=`) of the published images, or for runs
+// that built from source the fixtures release (e.g.
+// "glamsterdam-devnet@v8.0.0" and its GitHub release page) for consume
+// sims, or the EELS branch for execute sims. Both headers sit at the start
+// of multi-MB files, so only their heads are fetched.
+export const fetchFixtureRelease = async (
+  discoveryAddr: string,
+  fileName: string,
+  simLog: string,
+): Promise<FixtureRelease | null> => {
+  const log = simLog && await fetchHead(`${discoveryAddr}/results/${simLog}`);
+  const logged = log && loggedRelease(log);
+  if (logged) return logged;
+  const text = await fetchHead(`${discoveryAddr}/results/${fileName}`);
+  if (!text) return null;
   const tag = text.match(/"tag=([^"]+)"/)?.[1];
   if (tag) {
     const simulator = text.match(/"--sim",\s*"ethereum\/eels\/([^"]+)"/)?.[1];
