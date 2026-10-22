@@ -13,6 +13,8 @@ export interface TestRun {
   clients: string[];
   versions: Record<string, string>;
   start: string;
+  // Latest test end time; absent in listings written before hive recorded it.
+  end?: string;
   fileName: string;
   size: number;
   simLog: string;

@@ -8,6 +8,7 @@ import Header from './Header';
 import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
 import Breadcrumb from './Breadcrumb';
+import { formatDuration, formatDurationDelta, formatTimeSpan, timeSpanMs } from '../utils/duration';
 
 interface ComparisonTestCase {
   id: string;
@@ -70,6 +71,33 @@ const TestComparison = () => {
       runIds.includes(run.fileName.replace('.json', ''))
     ) || [];
   }, [allTestRuns, runIds]);
+
+  // Run durations, the longest one (to scale the duration bars), and each
+  // run's change against the previous selected run of the same suite and
+  // clients, so runtime jumps stand out.
+  const runTimings = useMemo(() => {
+    const durations = new Map<string, number>();
+    for (const run of selectedRuns) {
+      const ms = timeSpanMs(run.start, run.end);
+      if (ms !== null) durations.set(run.fileName, ms);
+    }
+    const deltas = new Map<string, { ms: number; ratio: number }>();
+    for (const run of selectedRuns) {
+      const current = durations.get(run.fileName);
+      if (current === undefined) continue;
+      const previous = selectedRuns
+        .filter(other =>
+          other.name === run.name &&
+          other.clients.join() === run.clients.join() &&
+          Date.parse(other.start) < Date.parse(run.start) &&
+          durations.has(other.fileName))
+        .sort((a, b) => Date.parse(b.start) - Date.parse(a.start))[0];
+      if (!previous) continue;
+      const before = durations.get(previous.fileName)!;
+      deltas.set(run.fileName, { ms: current - before, ratio: before > 0 ? current / before - 1 : 0 });
+    }
+    return { durations, deltas, max: Math.max(0, ...durations.values()) };
+  }, [selectedRuns]);
 
   // Create a stable query key
   const testDetailsQueryKey = useMemo(() => {
@@ -300,36 +328,24 @@ const TestComparison = () => {
     return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
   };
 
-  // Calculate duration display
-  const calculateDuration = (start: string, end: string) => {
-    try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-
-      if (!isValid(startDate) || !isValid(endDate)) {
-        return 'Invalid time';
-      }
-
-      const durationMs = endDate.getTime() - startDate.getTime();
-
-      if (durationMs < 0) {
-        return 'Invalid duration';
-      }
-
-      // Format based on duration length
-      if (durationMs < 1000) {
-        return `${durationMs}ms`;
-      } else if (durationMs < 60000) {
-        return `${(durationMs / 1000).toFixed(2)}s`;
-      } else {
-        const minutes = Math.floor(durationMs / 60000);
-        const seconds = Math.floor((durationMs % 60000) / 1000);
-        return `${minutes}m ${seconds}s`;
-      }
-    } catch (error) {
-      console.error('Error calculating duration:', error);
-      return 'Error calculating';
-    }
+  // Shows a run's duration change against the previous run, coloured only
+  // when it moved by more than 10% (orange slower, green faster).
+  const renderDurationDelta = (fileName: string) => {
+    const delta = runTimings.deltas.get(fileName);
+    if (!delta) return null;
+    const color = delta.ratio > 0.1
+      ? (isDarkMode ? '#fb923c' : '#ea580c')
+      : delta.ratio < -0.1
+        ? (isDarkMode ? '#4ade80' : '#16a34a')
+        : lightTextStyle.color;
+    return (
+      <span
+        title={`${delta.ratio >= 0 ? '+' : ''}${(delta.ratio * 100).toFixed(1)}% vs the previous run`}
+        style={{ color, fontWeight: Math.abs(delta.ratio) > 0.1 ? '600' : 'normal' }}
+      >
+        {formatDurationDelta(delta.ms)}
+      </span>
+    );
   };
 
   // Main container style
@@ -731,6 +747,25 @@ const TestComparison = () => {
                         <div>
                           <div style={{ fontWeight: '500' }}>{run.name}</div>
                           <div style={{ fontSize: '0.75rem', ...lightTextStyle }}>{formatDate(run.start)}</div>
+                          {runTimings.durations.has(run.fileName) && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                              <div style={{
+                                width: '160px',
+                                height: '0.4rem',
+                                borderRadius: '9999px',
+                                backgroundColor: isDarkMode ? 'rgba(71, 85, 105, 0.4)' : 'rgba(226, 232, 240, 0.9)',
+                                overflow: 'hidden'
+                              }}>
+                                <div style={{
+                                  width: `${(runTimings.durations.get(run.fileName)! / runTimings.max) * 100}%`,
+                                  height: '100%',
+                                  backgroundColor: '#6366f1'
+                                }} />
+                              </div>
+                              <span style={{ fontFamily: 'monospace' }}>{formatDuration(runTimings.durations.get(run.fileName)!)}</span>
+                              {renderDurationDelta(run.fileName)}
+                            </div>
+                          )}
                           {testDetails[run.fileName] && (
                             <div style={{
                               fontSize: '0.75rem',
@@ -820,8 +855,14 @@ const TestComparison = () => {
                   <tr>
                     <th style={{ ...tableHeaderStyle, width: '60%', textAlign: 'left' }}>Test Case</th>
                     {selectedRuns.map((run, index) => (
-                      <th key={run.fileName} style={{ ...tableHeaderStyle, width: '100px', padding: '0.5rem', textAlign: 'center' }}>
+                      <th key={run.fileName} style={{ ...tableHeaderStyle, width: '100px', padding: '0.5rem', textAlign: 'center', verticalAlign: 'top' }}>
                         Run {index + 1}
+                        {runTimings.durations.has(run.fileName) && (
+                          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', ...lightTextStyle }}>
+                            {formatDuration(runTimings.durations.get(run.fileName)!)}
+                            <div>{renderDurationDelta(run.fileName)}</div>
+                          </div>
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -909,7 +950,7 @@ const TestComparison = () => {
                                   {detail.summaryResult.pass ? "✓" : "✕"}
                                 </div>
                                 <div style={{ fontSize: '0.65rem', fontFamily: 'monospace' }}>
-                                  {calculateDuration(detail.start, detail.end)}
+                                  {formatTimeSpan(detail.start, detail.end) ?? '-'}
                                 </div>
                               </Link>
                             ) : (

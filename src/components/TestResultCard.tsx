@@ -1,6 +1,7 @@
 import { format, isValid } from 'date-fns';
 import { TestRun } from '../types';
 import { getStatusStyles } from '../utils/statusHelpers';
+import { formatTimeSpan } from '../utils/duration';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTestRuns, fetchFixtureRelease } from '../services/api';
@@ -26,6 +27,9 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
 
   // Check if this run is old (older than 9 days)
   const isOld = isOldRun(run.start);
+
+  // Unknown (null) until the hive listing records run end times.
+  const duration = formatTimeSpan(run.start, run.end);
 
   // Fetch all test runs for the current directory
   const { data: allTestRuns } = useQuery({
@@ -329,6 +333,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                     >
                       <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
                         {format(new Date(pastRun.start), 'MMM d, yyyy HH:mm:ss')}
+                        {formatTimeSpan(pastRun.start, pastRun.end) && ` (${formatTimeSpan(pastRun.start, pastRun.end)})`}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -422,6 +427,14 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
           <div style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
             <span style={{ marginRight: '0.25rem' }}>🕒</span>
             {formatDate(run.start)}
+            {duration && (
+              <span
+                title={`Ran from ${formatDate(run.start)} to ${formatDate(run.end!)}`}
+                style={{ marginLeft: '0.3rem', opacity: 0.7 }}
+              >
+                ({duration})
+              </span>
+            )}
           </div>
           {isEelsRun(run.name) && (
             <EelsReleaseTag address={directoryAddress} fileName={run.fileName} />

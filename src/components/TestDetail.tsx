@@ -13,6 +13,7 @@ import SharedClientsPanel from './SharedClientsPanel';
 import CommandDisplay from './CommandDisplay';
 import ConfigViewer from './ConfigViewer';
 import VersionInfo from './VersionInfo';
+import { formatDuration } from '../utils/duration';
 
 const TestDetail = () => {
   const { isDarkMode } = useTheme();
@@ -1218,58 +1219,17 @@ const TestDetail = () => {
                           <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>DURATION</div>
                           <div style={{ fontSize: '0.875rem', fontFamily: 'monospace' }}>
                             {(() => {
-                              // Get all test cases with valid timestamps
-                              const testCases = Object.values(testDetail.testCases).filter(testCase => {
-                                try {
-                                  const start = new Date(testCase.start).getTime();
-                                  const end = new Date(testCase.end).getTime();
-                                  return !isNaN(start) && !isNaN(end) && end >= start;
-                                } catch (error) {
-                                  console.error('Error parsing timestamp:', error);
-                                  return false;
-                                }
-                              });
-
-                              if (testCases.length === 0) {
-                                return "0m 0s";
+                              // Span from the earliest test start to the latest test end. A loop
+                              // rather than Math.min(...), which overflows on suites with ~100k tests.
+                              let start = Infinity;
+                              let end = -Infinity;
+                              for (const testCase of Object.values(testDetail.testCases)) {
+                                const s = new Date(testCase.start).getTime();
+                                const e = new Date(testCase.end).getTime();
+                                if (s < start) start = s;
+                                if (e > end) end = e;
                               }
-
-                              // Find the earliest start time and latest end time
-                              let earliestStart = new Date(testCases[0].start).getTime();
-                              let latestEnd = new Date(testCases[0].end).getTime();
-
-                              testCases.forEach(testCase => {
-                                const start = new Date(testCase.start).getTime();
-                                const end = new Date(testCase.end).getTime();
-
-                                if (start < earliestStart) {
-                                  earliestStart = start;
-                                }
-
-                                if (end > latestEnd) {
-                                  latestEnd = end;
-                                }
-                              });
-
-                              // Calculate total duration from earliest start to latest end
-                              const totalDurationMs = latestEnd - earliestStart;
-
-                              // Format duration in a human-readable way (days, hours, minutes, seconds)
-                              const totalSeconds = Math.floor(totalDurationMs / 1000);
-
-                              const days = Math.floor(totalSeconds / (24 * 60 * 60));
-                              const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
-                              const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
-                              const seconds = totalSeconds % 60;
-
-                              // Format based on the duration length
-                              if (days > 0) {
-                                return `${days}d ${hours}h ${minutes}m`;
-                              } else if (hours > 0) {
-                                return `${hours}h ${minutes}m`;
-                              } else {
-                                return `${minutes}m ${seconds}s`;
-                              }
+                              return end >= start ? formatDuration(end - start) : '-';
                             })()}
                           </div>
                         </div>
