@@ -8,6 +8,7 @@ import Header from './Header';
 import Footer from './Footer';
 import { useTheme } from '../contexts/useTheme';
 import Breadcrumb from './Breadcrumb';
+import { formatTimeSpan } from '../utils/duration';
 
 interface ComparisonTestCase {
   id: string;
@@ -298,38 +299,6 @@ const TestComparison = () => {
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
     return isValid(date) ? format(date, 'MMM d, yyyy HH:mm:ss') : 'Invalid date';
-  };
-
-  // Calculate duration display
-  const calculateDuration = (start: string, end: string) => {
-    try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-
-      if (!isValid(startDate) || !isValid(endDate)) {
-        return 'Invalid time';
-      }
-
-      const durationMs = endDate.getTime() - startDate.getTime();
-
-      if (durationMs < 0) {
-        return 'Invalid duration';
-      }
-
-      // Format based on duration length
-      if (durationMs < 1000) {
-        return `${durationMs}ms`;
-      } else if (durationMs < 60000) {
-        return `${(durationMs / 1000).toFixed(2)}s`;
-      } else {
-        const minutes = Math.floor(durationMs / 60000);
-        const seconds = Math.floor((durationMs % 60000) / 1000);
-        return `${minutes}m ${seconds}s`;
-      }
-    } catch (error) {
-      console.error('Error calculating duration:', error);
-      return 'Error calculating';
-    }
   };
 
   // Main container style
@@ -730,7 +699,10 @@ const TestComparison = () => {
                         </div>
                         <div>
                           <div style={{ fontWeight: '500' }}>{run.name}</div>
-                          <div style={{ fontSize: '0.75rem', ...lightTextStyle }}>{formatDate(run.start)}</div>
+                          <div style={{ fontSize: '0.75rem', ...lightTextStyle }}>
+                            {formatDate(run.start)}
+                            {formatTimeSpan(run.start, run.end) && ` (${formatTimeSpan(run.start, run.end)})`}
+                          </div>
                           {testDetails[run.fileName] && (
                             <div style={{
                               fontSize: '0.75rem',
@@ -822,6 +794,11 @@ const TestComparison = () => {
                     {selectedRuns.map((run, index) => (
                       <th key={run.fileName} style={{ ...tableHeaderStyle, width: '100px', padding: '0.5rem', textAlign: 'center' }}>
                         Run {index + 1}
+                        {formatTimeSpan(run.start, run.end) && (
+                          <div style={{ fontSize: '0.7rem', fontWeight: 'normal', ...lightTextStyle }}>
+                            {formatTimeSpan(run.start, run.end)}
+                          </div>
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -909,7 +886,7 @@ const TestComparison = () => {
                                   {detail.summaryResult.pass ? "✓" : "✕"}
                                 </div>
                                 <div style={{ fontSize: '0.65rem', fontFamily: 'monospace' }}>
-                                  {calculateDuration(detail.start, detail.end)}
+                                  {formatTimeSpan(detail.start, detail.end) ?? '-'}
                                 </div>
                               </Link>
                             ) : (

@@ -4,6 +4,7 @@ import { GitHubWorkflowRun, GitHubJob, GitHubJobStep } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { useTheme } from '../contexts/useTheme';
 import { useState } from 'react';
+import { formatDuration } from '../utils/duration';
 
 interface WorkflowStatusProps {
   workflowUrls?: string[];
@@ -18,26 +19,6 @@ const getJobSortPriority = (job: GitHubJob): number => {
   if (job.status === 'completed' && job.conclusion === 'failure') return 4;
   if (job.status === 'completed') return 5;
   return 6; // fallback for any other status
-};
-
-// Helper function to format duration in human-readable format
-const formatDuration = (seconds: number): string => {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  } else if (seconds < 3600) {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
-  } else {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-    
-    let result = `${hours}h`;
-    if (minutes > 0) result += ` ${minutes}m`;
-    if (remainingSeconds > 0) result += ` ${remainingSeconds}s`;
-    return result;
-  }
 };
 
 // Helper function to get workflow run status icon
@@ -637,7 +618,7 @@ const WorkflowStatus: React.FC<WorkflowStatusProps> = ({ workflowUrls, groupName
                                         color: isDarkMode ? '#64748b' : '#94a3b8',
                                         whiteSpace: 'nowrap'
                                       }}>
-                                        {formatDuration(Math.round((new Date(step.completed_at).getTime() - new Date(step.started_at).getTime()) / 1000))}
+                                        {formatDuration(new Date(step.completed_at).getTime() - new Date(step.started_at).getTime())}
                                       </span>
                                     )}
                                   </div>

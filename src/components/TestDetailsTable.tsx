@@ -6,6 +6,7 @@ import { useTheme } from '../contexts/useTheme';
 import DOMPurify from 'dompurify';
 import LogExcerpt from './LogExcerpt';
 import { logViewerUrl } from '../utils/urls';
+import { formatTimeSpan } from '../utils/duration';
 
 // Link to a client's log, anchored on the test's byte range when the
 // client was shared across tests (logOffsets present).
@@ -353,28 +354,6 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
     newParams.delete('testnumber');
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams, setExpandedTestId]);
-
-  // Calculate test duration in a human-readable format
-  const calculateDuration = (start: string, end: string) => {
-    const startTime = new Date(start).getTime();
-    const endTime = new Date(end).getTime();
-    const durationMs = endTime - startTime;
-
-    // For very short durations (less than a second)
-    if (durationMs < 1000) {
-      return `${durationMs}ms`;
-    }
-
-    const seconds = Math.floor(durationMs / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-
-    if (minutes === 0) {
-      return `${seconds}s`;
-    }
-
-    return `${minutes}m ${remainingSeconds}s`;
-  };
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -775,7 +754,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                     </td>
                     <td style={tableCellStyle}>
                       <div style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                        {calculateDuration(testCase.start, testCase.end)}
+                        {formatTimeSpan(testCase.start, testCase.end) ?? '-'}
                       </div>
                     </td>
                     <td style={tableCellStyle} onClick={(e) => e.stopPropagation()}>
@@ -880,7 +859,7 @@ const TestDetailsTable: React.FC<TestDetailsTableProps> = ({
                                 </div>
                                 <div>
                                   <div style={{ fontSize: '0.75rem', ...lightTextStyle, marginBottom: '0.25rem' }}>DURATION</div>
-                                  <div>{calculateDuration(testCase.start, testCase.end)}</div>
+                                  <div>{formatTimeSpan(testCase.start, testCase.end) ?? '-'}</div>
                                 </div>
                               </div>
                             </div>
