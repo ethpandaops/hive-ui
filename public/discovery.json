@@ -7,13 +7,6 @@
     ]
   },
   {
-    "name": "glamsterdam",
-    "address": "https://hive.ethpandaops.io/glamsterdam/",
-    "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/hive-glamsterdam.yaml"
-    ]
-  },
-  {
     "name": "glamsterdam-quick",
     "address": "https://hive.ethpandaops.io/glamsterdam-quick/",
     "github_workflows": [
