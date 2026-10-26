@@ -1,9 +1,9 @@
 [
   {
-    "name": "generic",
+    "name": "mainnet",
     "address": "https://hive.ethpandaops.io/generic/",
     "github_workflows": [
-      "https://github.com/ethpandaops/hive-tests/actions/workflows/generic.yaml"
+      "https://github.com/ethpandaops/hive-tests/actions/workflows/mainnet.yaml"
     ]
   },
   {

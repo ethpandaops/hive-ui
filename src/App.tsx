@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createHashRouter, RouterProvider } from 'react-router-dom';
+import { createHashRouter, Navigate, RouterProvider, useLocation } from 'react-router-dom';
 import Groups from './components/Groups';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -8,6 +8,15 @@ import React from 'react';
 import NotFound from './components/NotFound';
 
 const queryClient = new QueryClient();
+
+// Old group names, so links to a renamed group keep working
+const RENAMED_GROUPS: Record<string, string> = { generic: 'mainnet' };
+
+function RenamedGroup() {
+  const { pathname, search } = useLocation();
+  const [, page, name, ...rest] = pathname.split('/');
+  return <Navigate replace to={['', page, RENAMED_GROUPS[name], ...rest].join('/') + search} />;
+}
 
 function MainApp() {
 
@@ -93,6 +102,12 @@ const router = createHashRouter([
       }
     }
   },
+  ...Object.keys(RENAMED_GROUPS).flatMap(name => [
+    `/test/${name}/:suiteid`,
+    `/compare/${name}`,
+    `/logs/${name}/:suiteId/:logFile`,
+    `/group/${name}`
+  ].map(path => ({ path, element: <RenamedGroup /> }))),
   {
     path: '*',
     element: <NotFound />
