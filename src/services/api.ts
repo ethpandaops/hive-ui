@@ -3,7 +3,7 @@ import { Directory, TestRun, TestDetail } from '../types';
 const getTimestamp = () => new Date().getTime();
 
 export const fetchDirectories = async (): Promise<Directory[]> => {
-  const response = await fetch(`/discovery.json?ts=${getTimestamp()}`);
+  const response = await fetch(`${import.meta.env.BASE_URL}discovery.json?ts=${getTimestamp()}`);
   if (!response.ok) {
     throw new Error('Failed to fetch directories');
   }

@@ -60,7 +60,7 @@ const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory, directoryAdd
             <>
               {groupKey.split('+').map((client, idx) => {
                 const clientName = client.trim().split('_')[0].toLowerCase();
-                const logoPath = `/img/clients/${clientName}.jpg`;
+                const logoPath = `${import.meta.env.BASE_URL}img/clients/${clientName}.jpg`;
                 return (
                   <div
                     key={client}
@@ -82,7 +82,7 @@ const TestResultGroup = ({ groupKey, groupRuns, groupBy, directory, directoryAdd
                         objectFit: 'cover'
                       }}
                       onError={(e) => {
-                        e.currentTarget.src = '/img/clients/default.jpg';
+                        e.currentTarget.src = `${import.meta.env.BASE_URL}img/clients/default.jpg`;
                       }}
                     />
                     <span>{client.trim()}</span>
