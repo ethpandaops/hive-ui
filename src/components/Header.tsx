@@ -108,7 +108,7 @@ const Header: React.FC = () => {
                 }}
               />
               <img
-                src="/img/hive-logo.png"
+                src={`${import.meta.env.BASE_URL}img/hive-logo.png`}
                 alt="Hive Logo"
                 style={{
                   width: '100%',

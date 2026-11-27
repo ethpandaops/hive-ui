@@ -120,7 +120,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
               // When grouped by test, show clients with logos
               run.clients.map((client, idx) => {
                 const clientName = client.split('_')[0].toLowerCase();
-                const logoPath = `/img/clients/${clientName}.jpg`;
+                const logoPath = `${import.meta.env.BASE_URL}img/clients/${clientName}.jpg`;
                 return (
                   <div
                     key={client}
@@ -142,7 +142,7 @@ const TestResultCard = ({ run, groupBy, directory, directoryAddress }: TestResul
                         objectFit: 'cover'
                       }}
                       onError={(e) => {
-                        e.currentTarget.src = '/img/clients/default.jpg';
+                        e.currentTarget.src = `${import.meta.env.BASE_URL}img/clients/default.jpg`;
                       }}
                     />
                     <span>{client}</span>

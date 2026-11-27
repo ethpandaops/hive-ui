@@ -1140,7 +1140,7 @@ const TestResultsTable = ({
                     }}>
                       {run.versions && Object.entries(run.versions).map(([client, version]) => {
                         const clientName = client.split('_')[0].toLowerCase();
-                        const logoPath = `/img/clients/${clientName}.jpg`;
+                        const logoPath = `${import.meta.env.BASE_URL}img/clients/${clientName}.jpg`;
                         return (
                           <Tooltip.Provider key={client} delayDuration={200}>
                             <Tooltip.Root>
@@ -1174,7 +1174,7 @@ const TestResultsTable = ({
                                       objectFit: 'cover'
                                     }}
                                     onError={(e) => {
-                                      e.currentTarget.src = '/img/clients/default.jpg';
+                                      e.currentTarget.src = `${import.meta.env.BASE_URL}img/clients/default.jpg`;
                                     }}
                                   />
                                   {client}
@@ -1212,7 +1212,7 @@ const TestResultsTable = ({
 
                       {!run.versions && run.clients && run.clients.map((client) => {
                         const clientName = client.split('_')[0].toLowerCase();
-                        const logoPath = `/img/clients/${clientName}.jpg`;
+                        const logoPath = `${import.meta.env.BASE_URL}img/clients/${clientName}.jpg`;
                         return (
                           <div
                             key={client}
@@ -1241,7 +1241,7 @@ const TestResultsTable = ({
                                 objectFit: 'cover'
                               }}
                               onError={(e) => {
-                                e.currentTarget.src = '/img/clients/default.jpg';
+                                e.currentTarget.src = `${import.meta.env.BASE_URL}img/clients/default.jpg`;
                               }}
                             />
                             {client}

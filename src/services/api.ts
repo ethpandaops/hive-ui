@@ -3,7 +3,7 @@ import { Directory, TestRun, TestDetail } from '../types';
 const getTimestamp = () => new Date().getTime();
 
 export const fetchDirectories = async (): Promise<Directory[]> => {
-  const response = await fetch(`/discovery.json?ts=${getTimestamp()}`);
+  const response = await fetch(`${import.meta.env.BASE_URL}discovery.json?ts=${getTimestamp()}`);
   if (!response.ok) {
     throw new Error('Failed to fetch directories');
   }
@@ -35,7 +35,7 @@ export const fetchTestRuns = async (directory: Directory): Promise<TestRun[]> =>
         return [];
       }
     })
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime())
 };
 
 export interface FixtureRelease {
